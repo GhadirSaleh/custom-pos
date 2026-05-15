@@ -29,7 +29,8 @@ const SEED_CURRENCIES = [
   { code: "GBP", symbol: "£", name: "British Pound", rate: 0.79 },
 ];
 const SEED_PRICELISTS = [
-  { id: uid(), name: "Standard", isDefault: true },
+  { id: uid(), name: "Standard", isDefault: true, pricingType: "manual", formula: null },
+  { id: uid(), name: "Wholesale", isDefault: false, pricingType: "formula", formula: { type: "markup", value: 25, rounding: "nearest_05" } },
 ];
 
 const CAT_ICONS = { Beverages: "🥤", Bakery: "🍞", Grains: "🌾", Dairy: "🥛", Meat: "🥩", Fruits: "🍎", Vegetables: "🥦", Snacks: "🍿", Other: "📦" };
@@ -38,51 +39,52 @@ const catIcon = (cat) => CAT_ICONS[cat] || "📦";
 const CSS = `
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'DM Sans',sans-serif}
+body{font-family:'DM Sans',sans-serif;background:#f8fafc;color:#1e293b}
 ::-webkit-scrollbar{width:5px;height:5px}
 ::-webkit-scrollbar-track{background:transparent}
-::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
 input,select,textarea,button{font-family:'DM Sans',sans-serif}
 .nav{display:flex;align-items:center;gap:10px;padding:14px 18px;border-radius:12px;border:none;background:transparent;color:#64748b;font-size:15px;font-weight:500;width:100%;text-align:left;cursor:pointer;transition:all .13s;min-height:48px}
-.nav:hover{background:#1e293b;color:#cbd5e1}
-.nav.on{background:#0c4a6e;color:#7dd3fc}
+.nav:hover{background:#f1f5f9;color:#334155}
+.nav.on{background:#e0f2fe;color:#0369a1}
 .btn{padding:10px 22px;border-radius:10px;border:none;font-size:14px;font-weight:600;cursor:pointer;transition:all .13s;display:inline-flex;align-items:center;gap:8px;white-space:nowrap;min-height:42px}
-.btn-primary{background:#0ea5e9;color:#fff}.btn-primary:active{background:#0284c7}
-.btn-success{background:#10b981;color:#fff}.btn-success:active{background:#059669}
-.btn-danger{background:#ef4444;color:#fff}.btn-danger:active{background:#dc2626}
-.btn-ghost{background:#1e293b;color:#cbd5e1;border:1px solid #2d3f55}.btn-ghost:active{background:#334155}
-.btn-amber{background:#f59e0b;color:#000}.btn-amber:active{background:#d97706}
+.btn-primary{background:#0284c7;color:#fff}.btn-primary:active{background:#0369a1}
+.btn-success{background:#059669;color:#fff}.btn-success:active{background:#047857}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:active{background:#b91c1c}
+.btn-ghost{background:#ffffff;color:#475569;border:1px solid #cbd5e1}.btn-ghost:active{background:#f1f5f9;border-color:#94a3b8}
+.btn-amber{background:#d97706;color:#fff}.btn-amber:active{background:#b45309}
 .btn-sm{padding:7px 16px;font-size:13px;border-radius:8px;min-height:36px}
-.inp{background:#0f172a;border:1.5px solid #2d3f55;border-radius:10px;padding:12px 14px;color:#e2e8f0;font-size:15px;outline:none;width:100%;transition:border .13s;min-height:44px}
-.inp:focus{border-color:#0ea5e9}
-.sel{background:#0f172a;border:1.5px solid #2d3f55;border-radius:10px;padding:12px 14px;color:#e2e8f0;font-size:15px;outline:none;width:100%;cursor:pointer;min-height:44px}
-.sel:focus{border-color:#0ea5e9}
-.card{background:#1e293b;border-radius:14px;padding:22px}
-.stat{background:linear-gradient(135deg,#1e293b,#0f1f35);border-radius:14px;padding:22px;border:1px solid #1e293b}
+.inp{background:#ffffff;border:1.5px solid #cbd5e1;border-radius:10px;padding:12px 14px;color:#1e293b;font-size:15px;outline:none;width:100%;transition:border .13s;min-height:44px}
+.inp:focus{border-color:#0284c7}
+.sel{background:#ffffff;border:1.5px solid #cbd5e1;border-radius:10px;padding:12px 14px;color:#1e293b;font-size:15px;outline:none;width:100%;cursor:pointer;min-height:44px}
+.sel:focus{border-color:#0284c7}
+.card{background:#ffffff;border-radius:14px;padding:22px;border:1px solid #e2e8f0}
+.stat{background:#ffffff;border-radius:14px;padding:22px;border:1px solid #e2e8f0}
 .tag{display:inline-flex;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:700;letter-spacing:.03em}
-.tag-red{background:#450a0a;color:#f87171}
-.tag-green{background:#052e16;color:#34d399}
-.tag-blue{background:#0c1a2e;color:#38bdf8}
-.tag-amber{background:#1c1000;color:#fbbf24}
-.tag-slate{background:#1e293b;color:#94a3b8;border:1px solid #334155}
-.tag-purple{background:#1e0a3c;color:#c084fc}
+.tag-red{background:#fef2f2;color:#dc2626}
+.tag-green{background:#f0fdf4;color:#059669}
+.tag-blue{background:#dbeafe;color:#0284c7}
+.tag-amber{background:#fef9c3;color:#d97706}
+.tag-slate{background:#f8fafc;color:#64748b;border:1px solid #e2e8f0}
+.tag-purple{background:#f3e8ff;color:#7c3aed}
 table{width:100%;border-collapse:collapse;font-size:14px}
-th{text-align:left;padding:12px 16px;color:#475569;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #1e293b;white-space:nowrap}
-td{padding:12px 16px;border-bottom:1px solid #151f2e;color:#cbd5e1;vertical-align:middle}
-tr:active td{background:#18253a}
-.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.78);display:flex;align-items:center;justify-content:center;z-index:200;padding:24px}
-.modal{background:#1a2744;border-radius:18px;padding:28px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;border:1px solid #2d3f55}
+th{text-align:left;padding:12px 16px;color:#64748b;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e2e8f0;white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid #f1f5f9;color:#475569;vertical-align:middle}
+tr:active td{background:#f8fafc}
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:200;padding:24px}
+.modal{background:#ffffff;border-radius:18px;padding:28px;width:100%;max-width:480px;max-height:92vh;overflow-y:auto;border:1px solid #e2e8f0;box-shadow:0 4px 24px rgba(0,0,0,.1)}
 .fg{margin-bottom:16px}
 .fl{display:block;font-size:12px;color:#64748b;margin-bottom:6px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
-.prod-card{background:#111e33;border-radius:12px;padding:16px;cursor:pointer;border:2px solid transparent;transition:all .13s;user-select:none}
-.prod-card:active{border-color:#0ea5e9;background:#1a2a42}
+.prod-card{background:#f8fafc;border-radius:8px;cursor:pointer;border:2px solid #e2e8f0;transition:all .13s;user-select:none;aspect-ratio:16/10;display:flex;flex-direction:column;justify-content:center;align-items:center;padding:8px 12px}
+.prod-card:hover{border-color:#0284c7;background:#f1f5f9}
+.prod-card:active{border-color:#0284c7;background:#e0f2fe}
 .prod-card.oos{opacity:.45;cursor:not-allowed;pointer-events:none}
-.ptab{padding:10px 20px;border-radius:10px;border:1.5px solid #2d3f55;background:#0f172a;color:#64748b;font-size:14px;font-weight:600;cursor:pointer;transition:all .13s;min-height:42px}
-.ptab.on{background:#0c4a6e;color:#7dd3fc;border-color:#0ea5e9}
-.roverlay{position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:300;padding:24px}
+.ptab{padding:10px 20px;border-radius:10px;border:1.5px solid #cbd5e1;background:#ffffff;color:#64748b;font-size:14px;font-weight:600;cursor:pointer;transition:all .13s;min-height:42px}
+.ptab.on{background:#e0f2fe;color:#0369a1;border-color:#0284c7}
+.roverlay{position:fixed;inset:0;background:rgba(0,0,0,.3);display:flex;align-items:center;justify-content:center;z-index:300;padding:24px}
 .receipt{background:#fff;color:#111;border-radius:8px;padding:30px 26px;width:100%;max-width:340px;font-family:'DM Mono',monospace;font-size:12.5px}
-.alert-r{padding:12px 16px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px;background:#450a0a;color:#fca5a5;border:1px solid #7f1d1d}
-.alert-g{padding:12px 16px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px;background:#052e16;color:#6ee7b7;border:1px solid #065f46}
+.alert-r{padding:12px 16px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
+.alert-g{padding:12px 16px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px;background:#f0fdf4;color:#059669;border:1px solid #bbf7d0}
 .ppage{flex:1;overflow:auto;padding:26px;display:flex;flex-direction:column;gap:20px}
 `;
 
@@ -118,68 +120,173 @@ function baseCur(currencies) {
   return currencies.find((c) => c.isBase) || currencies[0];
 }
 
+/* ─── FORMULA UTILITY ────────────────────────────────────────────────────── */
+function applyFormula(cost, basePrice, formula) {
+  if (!formula || formula.type === "none") return basePrice;
+  let price;
+  switch (formula.type) {
+    case "markup": price = cost * (1 + formula.value / 100); break;
+    case "margin": price = cost / (1 - Math.min(formula.value, 99) / 100); break;
+    case "discount": price = basePrice * (1 - formula.value / 100); break;
+    case "fixed": price = cost + formula.value; break;
+    default: price = basePrice;
+  }
+  return roundPrice(price, formula.rounding);
+}
+
+function roundPrice(price, method) {
+  switch (method) {
+    case "nearest_05": return Math.round((price) * 20) / 20;
+    case "nearest_10": return Math.round((price) * 10) / 10;
+    case "nearest_50": return Math.round((price) * 2) / 2;
+    case "nearest_1": return Math.round(price);
+    case "psychological": return Math.floor(price) + 0.99;
+    default: return price;
+  }
+}
+
 /* ─── NUMBAD COMPONENT ───────────────────────────────────────────────────── */
 const NUM_KEYS = [
   [1, 2, 3],
   [4, 5, 6],
   [7, 8, 9],
-  ["⌫", 0, "✓"],
+  ["⌫", 0, "."],
 ];
 
 function Numpad({ target, onConfirm, onCancel }) {
-  const [qty, setQty] = useState(target?.qty || 1);
-  const isDefault = useRef(!target?.qty);
+  const [qtyStr, setQtyStr] = useState(target?.qty != null ? String(target.qty) : "1");
+  const isDefault = useRef(target?.qty == null);
 
   const press = (k) => {
     if (typeof k === "number") {
-      setQty((prev) => {
-        let next = isDefault.current ? k : prev * 10 + k;
+      setQtyStr((prev) => {
+        const next = isDefault.current ? String(k) : prev + k;
         isDefault.current = false;
-        const max = target?.product?.stock ?? 9999;
-        return next > max ? prev : Math.min(next, max);
+        return next;
       });
+    } else if (k === "⌫") {
+      setQtyStr((prev) => {
+        const next = prev.length > 1 ? prev.slice(0, -1) : "1";
+        if (next === "1") isDefault.current = true;
+        return next;
+      });
+    } else if (k === ".") {
+      setQtyStr((prev) => {
+        if (prev.includes(".")) return prev;
+        return prev + ".";
+      });
+      isDefault.current = false;
     }
   };
+
+  const qty = parseFloat(qtyStr) || 0;
+  const max = target?.product?.stock ?? 9999;
+  const displayQty = qty > max ? max : qtyStr;
 
   return (
     <div className="roverlay" onClick={onCancel}>
       <div className="modal" style={{ maxWidth: 300, padding: 20 }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", marginBottom: 4 }}>{target?.product?.name}</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>{target?.product?.name}</div>
         <div style={{ fontSize: 12, color: "#64748b", marginBottom: 14 }}>Stock: {target?.product?.stock} {target?.product?.unit}</div>
         <div style={{
-          background: "#0a1628", borderRadius: 10, padding: "10px 16px", textAlign: "right",
-          fontSize: 28, fontWeight: 700, color: "#38bdf8", fontFamily: "'DM Mono',monospace", marginBottom: 14,
+          background: "#f8fafc", borderRadius: 10, padding: "10px 16px", textAlign: "right",
+          fontSize: 28, fontWeight: 700, color: "#0284c7", fontFamily: "'DM Mono',monospace", marginBottom: 14,
           letterSpacing: 2, minHeight: 48
         }}>
-          {qty}
+          {displayQty}
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-          {NUM_KEYS.slice(0, 3).map((row, ri) => (
+          {NUM_KEYS.map((row, ri) => (
             <div key={ri} style={{ display: "flex", gap: 6 }}>
               {row.map((k) => (
                 <button key={k} onClick={() => press(k)} style={{
                   flex: 1, padding: "12px 0", borderRadius: 9, border: "none",
-                  background: "#0f172a", color: "#e2e8f0",
+                  background: k === "⌫" ? "#fee2e2" : "#f1f5f9",
+                  color: k === "⌫" ? "#991b1b" : "#1e293b",
                   fontSize: 18, fontWeight: 700, cursor: "pointer"
                 }}>{k}</button>
               ))}
             </div>
           ))}
-          <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => setQty((prev) => { const n = Math.floor(prev / 10); if (n === 0) { isDefault.current = true; return 1; } return n; })} style={{
-              flex: 1, padding: "12px 0", borderRadius: 9, border: "1px solid #2d3f55",
-              background: "#1e293b", color: "#e2e8f0", fontSize: 18, fontWeight: 700, cursor: "pointer"
-            }}>⌫</button>
-            <button onClick={() => press(0)} style={{
-              flex: 1, padding: "12px 0", borderRadius: 9, border: "none",
-              background: "#0f172a", color: "#e2e8f0", fontSize: 18, fontWeight: 700, cursor: "pointer"
-            }}>0</button>
-          </div>
         </div>
-        <button onClick={() => onConfirm(qty)} style={{
+        <button onClick={() => onConfirm(Math.min(qty, max))} style={{
           width: "100%", marginTop: 12, padding: "14px 0", borderRadius: 9, border: "none",
-          background: "#0ea5e9", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer"
+          background: "#0284c7", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer"
         }}>Add to Cart</button>
+        <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
+          <button className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={onCancel}>Cancel</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CashNumpad({ total, cur, onConfirm, onCancel }) {
+  const [cash, setCash] = useState("");
+  const isDefault = useRef(true);
+
+  const press = (k) => {
+    if (typeof k === "number") {
+      setCash((prev) => {
+        const next = isDefault.current ? String(k) : prev + k;
+        isDefault.current = false;
+        return next;
+      });
+    } else if (k === ".") {
+      setCash((prev) => {
+        if (prev.includes(".")) return prev;
+        return prev === "" ? "0." : prev + ".";
+      });
+      isDefault.current = false;
+    } else if (k === "back") {
+      setCash((prev) => {
+        const next = prev.slice(0, -1);
+        if (next === "") isDefault.current = true;
+        return next;
+      });
+    } else if (k === "exact") {
+      setCash(String(total));
+      isDefault.current = false;
+    }
+  };
+
+  const cashNums = [[1, 2, 3], [4, 5, 6], [7, 8, 9], ["back", 0, "."]];
+
+  return (
+    <div className="roverlay" onClick={onCancel}>
+      <div className="modal" style={{ maxWidth: 320, padding: 20 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#0f172a", marginBottom: 4 }}>Cash Received</div>
+        <div style={{ fontSize: 12, color: "#64748b", marginBottom: 14 }}>Total due: <strong style={{ color: "#0284c7" }}>{fmtc(total, cur.symbol)}</strong></div>
+        <div style={{
+          background: "#f8fafc", borderRadius: 10, padding: "10px 16px", textAlign: "right",
+          fontSize: 28, fontWeight: 700, color: cash && +cash >= total ? "#059669" : "#0284c7",
+          fontFamily: "'DM Mono',monospace", marginBottom: 14, letterSpacing: 2, minHeight: 48
+        }}>
+          {cash || "0"}
+        </div>
+        {cash && +cash >= total && <div style={{ fontSize: 13, color: "#059669", marginBottom: 10, fontWeight: 600 }}>Change: {fmtc(+cash - total, cur.symbol)}</div>}
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {cashNums.map((row, ri) => (
+            <div key={ri} style={{ display: "flex", gap: 6 }}>
+              {row.map((k) => (
+                <button key={k} onClick={() => press(k)} style={{
+                  flex: 1, padding: "12px 0", borderRadius: 9, border: "1px solid #e2e8f0",
+                  background: k === "back" ? "#fee2e2" : "#f1f5f9",
+                  color: k === "back" ? "#991b1b" : "#1e293b",
+                  fontSize: 18, fontWeight: 700, cursor: "pointer"
+                }}>{k === "back" ? "⌫" : k}</button>
+              ))}
+            </div>
+          ))}
+        </div>
+        <button onClick={() => press("exact")} style={{
+          width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 9, border: "1px solid #e2e8f0",
+          background: "#fef3c7", color: "#92400e", fontSize: 14, fontWeight: 700, cursor: "pointer"
+        }}>Exact: {fmtc(total, cur.symbol)}</button>
+        <button onClick={() => onConfirm(cash)} style={{
+          width: "100%", marginTop: 12, padding: "14px 0", borderRadius: 9, border: "none",
+          background: "#0284c7", color: "#fff", fontSize: 15, fontWeight: 700, cursor: "pointer"
+        }}>Confirm</button>
         <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
           <button className="btn btn-ghost" style={{ flex: 1, justifyContent: "center" }} onClick={onCancel}>Cancel</button>
         </div>
@@ -190,6 +297,7 @@ function Numpad({ target, onConfirm, onCancel }) {
 
 export default function App() {
   const [view, setView] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [products, setProducts] = useState(null);
   const [customers, setCustomers] = useState(null);
   const [sales, setSales] = useState(null);
@@ -223,7 +331,7 @@ export default function App() {
   useEffect(() => { if (pricelists) window.storage.set(KEYS.pl, JSON.stringify(pricelists)).catch(() => {}); }, [pricelists]);
 
   if (!products || !customers || !sales || !purchases || !txns || !currencies || !pricelists)
-    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0a1628", color: "#94a3b8", fontFamily: "sans-serif", fontSize: 16, gap: 12 }}>
+    return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#f8fafc", color: "#64748b", fontFamily: "sans-serif", fontSize: 16, gap: 12 }}>
       <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Loading QuickPOS...
     </div>;
 
@@ -240,23 +348,30 @@ export default function App() {
   ];
 
   return (
-    <div style={{ display: "flex", height: "100vh", fontFamily: "'DM Sans',sans-serif", background: "#0a1628", color: "#e2e8f0", overflow: "hidden" }}>
+    <div style={{ display: "flex", height: "100vh", fontFamily: "'DM Sans',sans-serif", background: "#f8fafc", color: "#1e293b", overflow: "hidden" }}>
       <style>{CSS}</style>
-      <aside style={{ width: 220, background: "#07101f", borderRight: "1px solid #1a2540", padding: "18px 12px", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0 }}>
-        <div style={{ padding: "12px 16px 20px", borderBottom: "1px solid #1a2540", marginBottom: 8 }}>
-          <div style={{ fontSize: 19, fontWeight: 700, color: "#38bdf8", letterSpacing: "-.02em" }}>⚡ QuickPOS</div>
-          <div style={{ fontSize: 12, color: "#334155", marginTop: 3 }}>Point of Sale System</div>
+      <aside style={{ width: sidebarOpen ? 220 : 0, background: "#ffffff", borderRight: sidebarOpen ? "1px solid #e2e8f0" : "none", padding: sidebarOpen ? "18px 12px" : "0 0", display: "flex", flexDirection: "column", gap: 4, flexShrink: 0, overflow: "hidden", transition: "all .2s ease", whiteSpace: "nowrap" }}>
+        <div style={{ padding: "12px 16px 20px", borderBottom: "1px solid #e2e8f0", marginBottom: 8 }}>
+          <div style={{ fontSize: 19, fontWeight: 700, color: "#0f172a", letterSpacing: "-.02em" }}>⚡ QuickPOS</div>
+          <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>Point of Sale System</div>
         </div>
         {NAV.map((n) => (
           <button key={n.id} className={`nav ${view === n.id ? "on" : ""}`} onClick={() => setView(n.id)}>
             <span style={{ fontSize: 18 }}>{n.icon}</span> {n.label}
           </button>
         ))}
-        <div style={{ marginTop: "auto", padding: "14px 16px", borderTop: "1px solid #1a2540", fontSize: 12, color: "#334155" }}>
+        <div style={{ marginTop: "auto", padding: "14px 16px", borderTop: "1px solid #e2e8f0", fontSize: 12, color: "#94a3b8" }}>
           v1.0 · All data saved locally
         </div>
       </aside>
       <main style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <button onClick={() => setSidebarOpen(!sidebarOpen)} style={{
+          position: "absolute", top: 14, left: sidebarOpen ? 228 : 8, zIndex: 100,
+          width: 36, height: 36, borderRadius: 8, border: "1px solid #e2e8f0",
+          background: "#ffffff", color: "#1e293b", fontSize: 18, cursor: "pointer",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          transition: "left .2s ease", boxShadow: "0 1px 3px rgba(0,0,0,.1)"
+        }}>☰</button>
         {view === "dashboard" && <Dashboard {...ctx} />}
         {view === "sell" && <SellView {...ctx} />}
         {view === "inventory" && <InventoryView {...ctx} />}
@@ -340,7 +455,7 @@ function CurrenciesView({ currencies, setCurrencies }) {
   return (
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>💱 Currencies</div><div style={{ fontSize: 13, color: "#64748b" }}>Base currency: <strong style={{ color: "#38bdf8" }}>{base.code} ({base.symbol})</strong></div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>💱 Currencies</div><div style={{ fontSize: 13, color: "#64748b" }}>Base currency: <strong style={{ color: "#0284c7" }}>{base.code} ({base.symbol})</strong></div></div>
         <div style={{ display: "flex", gap: 8 }}>
           <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importCurrencies} />
           <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
@@ -358,7 +473,7 @@ function CurrenciesView({ currencies, setCurrencies }) {
                 <td style={{ fontWeight: 700, fontFamily: "monospace", fontSize: 14 }}>{c.code}</td>
                 <td style={{ fontSize: 18 }}>{c.symbol}</td>
                 <td>{c.name}</td>
-                <td style={{ color: "#38bdf8", fontWeight: 700 }}>{c.rate}</td>
+                <td style={{ color: "#0284c7", fontWeight: 700 }}>{c.rate}</td>
                 <td>{c.isBase ? <span className="tag tag-green">BASE</span> : <button className="btn btn-ghost btn-sm" onClick={() => setBase(c.code)}>Set as base</button>}</td>
                 <td>
                   <div style={{ display: "flex", gap: 5 }}>
@@ -375,14 +490,14 @@ function CurrenciesView({ currencies, setCurrencies }) {
       {modal && (
         <div className="modal-bg" onClick={() => setModal(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#f1f5f9" }}>{modal === "add" ? "➕ Add Currency" : "✏️ Edit Currency"}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#0f172a" }}>{modal === "add" ? "➕ Add Currency" : "✏️ Edit Currency"}</div>
             <div className="fg"><label className="fl">Currency Code *</label><input className="inp" placeholder="e.g. USD" maxLength={3} style={{ textTransform: "uppercase" }} {...F("code")} disabled={modal !== "add"} /></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div className="fg"><label className="fl">Symbol</label><input className="inp" placeholder="e.g. $" {...F("symbol")} /></div>
               <div className="fg"><label className="fl">Name</label><input className="inp" placeholder="e.g. US Dollar" {...F("name")} /></div>
             </div>
             <div className="fg"><label className="fl">Exchange Rate * (per {base.code})</label><input className="inp" type="number" step="0.0001" placeholder="1.0" {...F("rate")} /></div>
-            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 14, background: "#0f172a", borderRadius: 8, padding: 10 }}>
+            <div style={{ fontSize: 12, color: "#64748b", marginBottom: 14, background: "#f8fafc", borderRadius: 8, padding: 10 }}>
               Rate = how much 1 {base.code} is worth in this currency. For {base.code} the rate is 1.
             </div>
             <div style={{ display: "flex", gap: 10 }}>
@@ -411,11 +526,17 @@ function PricelistsView({ pricelists, setPricelists, products, setProducts, curr
   const exportPricelists = () => {
     const rows = [];
     pricelists.forEach((pl) => {
-      products.forEach((p) => {
-        rows.push({ Pricelist: pl.name, Default: pl.isDefault ? "Yes" : "No", "Product SKU": p.sku, "Base Price": p.price, "Override Price": p.prices?.[pl.id] ?? "" });
-      });
+      if (pl.isDefault) {
+        rows.push({ Pricelist: pl.name, Default: "Yes", "Pricing Type": "manual", "Formula Type": "", "Formula Value": "", Rounding: "", "Product SKU": "", "Override Price": "" });
+      } else if (pl.pricingType === "formula") {
+        rows.push({ Pricelist: pl.name, Default: "No", "Pricing Type": "formula", "Formula Type": pl.formula?.type || "", "Formula Value": pl.formula?.value ?? "", Rounding: pl.formula?.rounding || "", "Product SKU": "", "Override Price": "" });
+      } else {
+        products.forEach((p) => {
+          rows.push({ Pricelist: pl.name, Default: "No", "Pricing Type": "manual", "Formula Type": "", "Formula Value": "", Rounding: "", "Product SKU": p.sku, "Override Price": p.prices?.[pl.id] ?? "" });
+        });
+      }
     });
-    exportXLSX(rows, ["Pricelist", "Default", "Product SKU", "Base Price", "Override Price"], "pricelists.xlsx");
+    exportXLSX(rows, ["Pricelist", "Default", "Pricing Type", "Formula Type", "Formula Value", "Rounding", "Product SKU", "Override Price"], "pricelists.xlsx");
   };
 
   const importPricelists = async (e) => {
@@ -423,13 +544,35 @@ function PricelistsView({ pricelists, setPricelists, products, setProducts, curr
     if (!file) return;
     try {
       const rows = await importXLSX(file);
-      const names = new Set();
-      rows.forEach((r) => { const n = (r.Pricelist || r.pricelist || "").trim(); if (n) names.add(n); });
+      const pls = {};
+      rows.forEach((r) => {
+        const name = (r.Pricelist || r.pricelist || "").trim();
+        if (!name) return;
+        if (!pls[name]) pls[name] = { isDefault: (r.Default || "").toString().toLowerCase() === "yes", pricingType: (r["Pricing Type"] || r.pricingType || "manual").toLowerCase(), formula: null, prices: [] };
+        if (r["Formula Type"]) pls[name].formula = { type: r["Formula Type"], value: +(r["Formula Value"] || 0), rounding: r.Rounding || r.rounding || "none" };
+        const sku = (r["Product SKU"] || r.sku || "").trim();
+        if (sku && r["Override Price"] !== undefined && r["Override Price"] !== "") {
+          pls[name].prices.push({ sku, price: +r["Override Price"] });
+        }
+      });
       let added = 0;
       setPricelists((ps) => {
         const next = [...ps];
-        names.forEach((name) => {
-          if (!next.find((p) => p.name === name)) { next.push({ id: uid(), name, isDefault: false }); added++; }
+        Object.entries(pls).forEach(([name, cfg]) => {
+          if (!next.find((p) => p.name === name)) {
+            next.push({ id: uid(), name, isDefault: next.length === 0 ? true : cfg.isDefault, pricingType: cfg.pricingType, formula: cfg.formula });
+            added++;
+          }
+        });
+        return next;
+      });
+      setProducts((ps) => {
+        const next = [...ps];
+        Object.values(pls).forEach((cfg) => {
+          cfg.prices.forEach(({ sku, price }) => {
+            const idx = next.findIndex((p) => p.sku === sku);
+            if (idx >= 0) next[idx] = { ...next[idx], prices: { ...(next[idx].prices || {}), [cfg.pricelistId || ""]: price } };
+          });
         });
         return next;
       });
@@ -441,18 +584,34 @@ function PricelistsView({ pricelists, setPricelists, products, setProducts, curr
     setTimeout(() => setImportMsg(null), 5000);
   };
 
-  const openAdd = () => { setForm({ name: "" }); setModal("add"); };
-  const openEdit = (pl) => { setForm({ name: pl.name }); setModal(pl.id); };
+  const openAdd = () => { setForm({ name: "", pricingType: "manual", formula: { type: "markup", value: 25, rounding: "nearest_05" } }); setModal("add"); };
+  const openEdit = (pl) => { setForm({ name: pl.name, pricingType: pl.pricingType || "manual", formula: pl.formula ? { ...pl.formula } : { type: "markup", value: 25, rounding: "nearest_05" } }); setModal(pl.id); };
   const save = () => {
     if (!form.name.trim()) return;
     if (modal === "add") {
-      setPricelists((ps) => [...ps, { id: uid(), name: form.name.trim(), isDefault: false }]);
+      setPricelists((ps) => [...ps, { id: uid(), name: form.name.trim(), isDefault: false, pricingType: form.pricingType || "manual", formula: form.pricingType === "formula" ? { ...form.formula } : null }]);
       setProducts((ps) => ps.map((p) => ({ ...p, prices: { ...(p.prices || {}) } })));
     } else {
-      setPricelists((ps) => ps.map((p) => p.id === modal ? { ...p, name: form.name.trim() } : p));
+      setPricelists((ps) => ps.map((p) => p.id === modal ? { ...p, name: form.name.trim(), pricingType: form.pricingType || "manual", formula: form.pricingType === "formula" ? { ...form.formula } : null } : p));
     }
     setModal(null);
   };
+
+  const FORMULA_OPTIONS = [
+    { value: "markup", label: "Markup on Cost" },
+    { value: "margin", label: "Margin on Cost" },
+    { value: "discount", label: "Discount off Base" },
+    { value: "fixed", label: "Fixed on Cost" },
+  ];
+  const ROUNDING_OPTIONS = [
+    { value: "none", label: "No rounding" },
+    { value: "nearest_05", label: "Nearest $0.05" },
+    { value: "nearest_10", label: "Nearest $0.10" },
+    { value: "nearest_50", label: "Nearest $0.50" },
+    { value: "nearest_1", label: "Nearest $1.00" },
+    { value: "psychological", label: "Psychological ($X.99)" },
+  ];
+  const [editTab, setEditTab] = useState("formula");
   const del = (id) => {
     if (!confirm("Delete this pricelist?")) return;
     setPricelists((ps) => ps.filter((p) => p.id !== id));
@@ -462,7 +621,7 @@ function PricelistsView({ pricelists, setPricelists, products, setProducts, curr
   return (
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>🏷️ Pricelists</div><div style={{ fontSize: 13, color: "#64748b" }}>{pricelists.length} pricelists · {otherPLs.length > 0 ? `${products.length} products with override prices` : "Add pricelists to create pricing tiers"}</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>🏷️ Pricelists</div><div style={{ fontSize: 13, color: "#64748b" }}>{pricelists.length} pricelists · {otherPLs.length > 0 ? `${products.length} products with override prices` : "Add pricelists to create pricing tiers"}</div></div>
         <div style={{ display: "flex", gap: 8 }}>
           <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importPricelists} />
           <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
@@ -474,15 +633,16 @@ function PricelistsView({ pricelists, setPricelists, products, setProducts, curr
 
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <table>
-          <thead><tr><th>Name</th><th>Default</th><th>Actions</th></tr></thead>
+          <thead><tr><th>Name</th><th>Pricing</th><th>Default</th><th>Actions</th></tr></thead>
           <tbody>
             {pricelists.map((pl) => (
               <tr key={pl.id}>
                 <td style={{ fontWeight: 600 }}>{pl.name}</td>
+                <td>{pl.isDefault ? <span className="tag tag-slate">Base price</span> : pl.pricingType === "formula" ? <span className="tag tag-purple">Formula</span> : <span className="tag tag-blue">Manual</span>}</td>
                 <td>{pl.isDefault ? <span className="tag tag-green">BASE</span> : <button className="btn btn-ghost btn-sm" onClick={() => setPricelists((ps) => ps.map((p) => ({ ...p, isDefault: p.id === pl.id })))}>Set as default</button>}</td>
                 <td>
                   <div style={{ display: "flex", gap: 5 }}>
-                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(pl)}>Rename</button>
+                    {!pl.isDefault && <button className="btn btn-ghost btn-sm" onClick={() => openEdit(pl)}>Edit</button>}
                     {!pl.isDefault && <button className="btn btn-danger btn-sm" onClick={() => del(pl.id)}>Del</button>}
                   </div>
                 </td>
@@ -492,48 +652,101 @@ function PricelistsView({ pricelists, setPricelists, products, setProducts, curr
         </table>
       </div>
 
-      {otherPLs.length > 0 && (
-        <div className="card" style={{ padding: 0, overflow: "auto" }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", padding: "16px 20px", borderBottom: "1px solid #1a2540" }}>Override Prices</div>
-          <table>
-            <thead><tr><th>Product</th><th>{defPL.name} Price</th>{otherPLs.map((pl) => <th key={pl.id}>{pl.name} Price</th>)}</tr></thead>
-            <tbody>
-              {products.map((p) => {
-                const key = `${p.id}-prices`;
-                return (
-                  <tr key={p.id}>
-                    <td style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</td>
-                    <td style={{ color: "#38bdf8", fontWeight: 700 }}>{fmt(p.price)} {base.symbol}</td>
-                    {otherPLs.map((pl) => (
-                      <td key={pl.id}>
-                        <input
-                          type="number" step="0.01" min={0}
-                          placeholder={fmt(p.price)}
-                          value={p.prices?.[pl.id] ?? ""}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setProducts((ps) => ps.map((x) => x.id === p.id ? { ...x, prices: { ...(x.prices || {}), [pl.id]: v === "" ? undefined : +v } } : x));
-                          }}
-                          style={{
-                            width: 90, padding: "6px 8px", borderRadius: 6, border: "1.5px solid #2d3f55",
-                            background: "#0f172a", color: "#e2e8f0", fontSize: 13, outline: "none"
-                          }}
-                        />
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+      {modal && modal !== "add" && (() => { const editing = pricelists.find((p) => p.id === modal); if (!editing) return null; return (
+        <div className="modal-bg" onClick={() => setModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 16, color: "#0f172a" }}>✏️ Edit Pricelist</div>
+            <div className="fg"><label className="fl">Pricelist Name</label><input className="inp" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} /></div>
+            <div style={{ marginBottom: 16 }}>
+              <div className="fl">Pricing Method</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className={`ptab ${form.pricingType === "formula" ? "on" : ""}`} onClick={() => setForm((f) => ({ ...f, pricingType: "formula" }))}>🧮 Formula</button>
+                <button className={`ptab ${form.pricingType === "manual" ? "on" : ""}`} onClick={() => setForm((f) => ({ ...f, pricingType: "manual" }))}>✏️ Manual</button>
+              </div>
+            </div>
+            {form.pricingType === "formula" ? (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div className="fg"><label className="fl">Formula Type</label>
+                    <select className="sel" value={form.formula?.type || "markup"} onChange={(e) => setForm((f) => ({ ...f, formula: { ...f.formula, type: e.target.value } }))}>
+                      {FORMULA_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="fg"><label className="fl">Value</label>
+                    <input className="inp" type="number" min={0} step="0.01" placeholder="25" value={form.formula?.value ?? ""} onChange={(e) => setForm((f) => ({ ...f, formula: { ...f.formula, value: +e.target.value } }))} />
+                  </div>
+                </div>
+                <div className="fg"><label className="fl">Rounding</label>
+                  <select className="sel" value={form.formula?.rounding || "none"} onChange={(e) => setForm((f) => ({ ...f, formula: { ...f.formula, rounding: e.target.value } }))}>
+                    {ROUNDING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+                {form.formula?.type && <div style={{ background: "#f8fafc", borderRadius: 8, padding: 10, marginBottom: 12 }}>
+                  <div style={{ fontSize: 11, color: "#64748b", marginBottom: 6, fontWeight: 700, textTransform: "uppercase" }}>Preview (first 5 products)</div>
+                  {products.slice(0, 5).map((p) => {
+                    const fp = applyFormula(p.cost, p.price, form.formula);
+                    return (
+                      <div key={p.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 12, padding: "3px 0" }}>
+                        <span style={{ color: "#475569" }}>{p.name}</span>
+                        <span><span style={{ color: "#64748b" }}>cost {base.symbol}{fmt(p.cost)}</span> → <strong style={{ color: "#059669" }}>{base.symbol}{fmt(fp)}</strong></span>
+                      </div>
+                    );
+                  })}
+                </div>}
+              </div>
+            ) : (
+              <div style={{ maxHeight: 300, overflow: "auto" }}>
+                {products.map((p) => (
+                  <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: "1px solid #e2e8f0" }}>
+                    <div style={{ flex: 1, fontSize: 12, color: "#1e293b" }}>{p.name}</div>
+                    <div style={{ fontSize: 11, color: "#64748b", minWidth: 50, textAlign: "right" }}>{base.symbol}{fmt(p.price)}</div>
+                    <input type="number" step="0.01" min={0} placeholder={fmt(p.price)}
+                      value={p.prices?.[modal] ?? ""}
+                      onChange={(e) => setProducts((ps) => ps.map((x) => x.id === p.id ? { ...x, prices: { ...(x.prices || {}), [modal]: e.target.value === "" ? undefined : +e.target.value } } : x))}
+                      style={{ width: 85, padding: "5px 7px", borderRadius: 6, border: "1.5px solid #cbd5e1", background: "#ffffff", color: "#1e293b", fontSize: 12, outline: "none", textAlign: "right" }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
+            <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={save}>Save</button>
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+            </div>
+          </div>
         </div>
-      )}
+      )})()}
 
-      {modal && (
+      {modal === "add" && (
         <div className="modal-bg" onClick={() => setModal(null)}>
           <div className="modal" style={{ maxWidth: 360 }} onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#f1f5f9" }}>{modal === "add" ? "➕ Add Pricelist" : "✏️ Rename Pricelist"}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#0f172a" }}>➕ Add Pricelist</div>
             <div className="fg"><label className="fl">Pricelist Name *</label><input className="inp" placeholder="e.g. Wholesale" {...F("name")} autoFocus /></div>
+            <div className="fg"><label className="fl">Pricing Method</label>
+              <select className="sel" value={form.pricingType || "manual"} onChange={(e) => setForm((f) => ({ ...f, pricingType: e.target.value }))}>
+                <option value="manual">✏️ Manual (set prices per product)</option>
+                <option value="formula">🧮 Formula (calculate from cost)</option>
+              </select>
+            </div>
+            {form.pricingType === "formula" && (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div className="fg"><label className="fl">Formula Type</label>
+                    <select className="sel" value={form.formula?.type || "markup"} onChange={(e) => setForm((f) => ({ ...f, formula: { ...f.formula, type: e.target.value } }))}>
+                      {FORMULA_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="fg"><label className="fl">Value</label>
+                    <input className="inp" type="number" min={0} step="0.01" placeholder="25" value={form.formula?.value ?? ""} onChange={(e) => setForm((f) => ({ ...f, formula: { ...f.formula, value: +e.target.value } }))} />
+                  </div>
+                </div>
+                <div className="fg"><label className="fl">Rounding</label>
+                  <select className="sel" value={form.formula?.rounding || "none"} onChange={(e) => setForm((f) => ({ ...f, formula: { ...f.formula, rounding: e.target.value } }))}>
+                    {ROUNDING_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10 }}>
               <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={save}>Save</button>
               <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
@@ -564,19 +777,19 @@ function Dashboard({ products, customers, sales, setView, currencies }) {
   }, 0);
 
   const stats = [
-    { label: "Today's Revenue", val: `${fmt(todayRev)} ${base.symbol}`, sub: `${todaySales.length} sales today`, c: "#38bdf8", icon: "💰" },
-    { label: "Total Revenue", val: `${fmt(totalRev)} ${base.symbol}`, sub: `${sales.length} all-time sales`, c: "#34d399", icon: "📈" },
-    { label: "Est. Profit", val: `${fmt(profit)} ${base.symbol}`, sub: "Revenue minus cost", c: "#c084fc", icon: "✨" },
+    { label: "Today's Revenue", val: `${fmt(todayRev)} ${base.symbol}`, sub: `${todaySales.length} sales today`, c: "#0284c7", icon: "💰" },
+    { label: "Total Revenue", val: `${fmt(totalRev)} ${base.symbol}`, sub: `${sales.length} all-time sales`, c: "#059669", icon: "📈" },
+    { label: "Est. Profit", val: `${fmt(profit)} ${base.symbol}`, sub: "Revenue minus cost", c: "#7c3aed", icon: "✨" },
     { label: "Stock Value", val: `${fmt(stockVal)} ${base.symbol}`, sub: `${products.length} products`, c: "#fb923c", icon: "📦" },
-    { label: "Customer Debt", val: `${fmt(totalDebt)} ${base.symbol}`, sub: `${customers.filter((c) => c.balance > 0).length} with balance`, c: "#f87171", icon: "💳" },
-    { label: "Low Stock Items", val: lowStock.length, sub: lowStock.length ? "Need restocking" : "All stocked well", c: lowStock.length ? "#fbbf24" : "#34d399", icon: "⚠️" },
+    { label: "Customer Debt", val: `${fmt(totalDebt)} ${base.symbol}`, sub: `${customers.filter((c) => c.balance > 0).length} with balance`, c: "#dc2626", icon: "💳" },
+    { label: "Low Stock Items", val: lowStock.length, sub: lowStock.length ? "Need restocking" : "All stocked well", c: lowStock.length ? "#d97706" : "#059669", icon: "⚠️" },
   ];
 
   return (
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>Dashboard</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>Dashboard</div>
           <div style={{ fontSize: 13, color: "#64748b", marginTop: 3 }}>{new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" })}</div>
         </div>
         <button className="btn btn-primary" onClick={() => setView("sell")}>🛒 New Sale</button>
@@ -587,7 +800,7 @@ function Dashboard({ products, customers, sales, setView, currencies }) {
           <div key={s.label} className="stat">
             <div style={{ fontSize: 22, marginBottom: 6 }}>{s.icon}</div>
             <div style={{ fontSize: 22, fontWeight: 700, color: s.c }}>{s.val}</div>
-            <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 3 }}>{s.label}</div>
+            <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>{s.label}</div>
             <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>{s.sub}</div>
           </div>
         ))}
@@ -595,17 +808,17 @@ function Dashboard({ products, customers, sales, setView, currencies }) {
 
       <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: 14 }}>
         <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#f1f5f9" }}>Recent Sales</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#0f172a" }}>Recent Sales</div>
           {recent.length === 0 ? (
             <div style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "24px 0" }}>No sales yet — go make your first sale!</div>
           ) : recent.map((s) => (
-            <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #151f2e" }}>
+            <div key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
               <div>
-                <div style={{ fontSize: 13, color: "#e2e8f0", fontWeight: 500 }}>{s.customerName || "Walk-in"}</div>
-                <div style={{ fontSize: 11, color: "#475569" }}>{fmtDate(s.date)} · {fmtTime(s.date)}</div>
+                <div style={{ fontSize: 13, color: "#1e293b", fontWeight: 500 }}>{s.customerName || "Walk-in"}</div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>{fmtDate(s.date)} · {fmtTime(s.date)}</div>
               </div>
               <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: "#34d399" }}>{fmt(s.total)} {base.symbol}</div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "#059669" }}>{fmt(s.total)} {base.symbol}</div>
                 {s.credit > 0 && <span className="tag tag-red" style={{ fontSize: 10 }}>+{fmt(s.credit)} {base.symbol} debt</span>}
               </div>
             </div>
@@ -613,14 +826,14 @@ function Dashboard({ products, customers, sales, setView, currencies }) {
         </div>
 
         <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#f1f5f9" }}>⚠️ Low Stock</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#0f172a" }}>⚠️ Low Stock</div>
           {lowStock.length === 0 ? (
-            <div style={{ color: "#34d399", fontSize: 13, textAlign: "center", padding: "24px 0" }}>✅ All items well stocked</div>
+            <div style={{ color: "#059669", fontSize: 13, textAlign: "center", padding: "24px 0" }}>✅ All items well stocked</div>
           ) : lowStock.map((p) => (
-            <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #151f2e" }}>
+            <div key={p.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
               <div>
-                <div style={{ fontSize: 13, color: "#e2e8f0" }}>{p.name}</div>
-                <div style={{ fontSize: 11, color: "#475569" }}>{p.sku}</div>
+                <div style={{ fontSize: 13, color: "#1e293b" }}>{p.name}</div>
+                <div style={{ fontSize: 11, color: "#64748b" }}>{p.sku}</div>
               </div>
               <span className={`tag ${p.stock === 0 ? "tag-red" : "tag-amber"}`}>{p.stock} {p.unit}</span>
             </div>
@@ -637,13 +850,14 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
   const [customerId, setCustomerId] = useState("");
-  const [discount, setDiscount] = useState("");
   const [payMode, setPayMode] = useState("cash");
   const [cashPaid, setCashPaid] = useState("");
   const [partialCash, setPartialCash] = useState("");
   const [receipt, setReceipt] = useState(null);
   const [err, setErr] = useState("");
   const [numpadTarget, setNumpadTarget] = useState(null);
+  const [cashNumpadOpen, setCashNumpadOpen] = useState(false);
+  const [splitNumpadOpen, setSplitNumpadOpen] = useState(false);
   const [saleCurrency, setSaleCurrency] = useState(baseCur(currencies)?.code || "USD");
   const defPL = pricelists.find((p) => p.isDefault) || pricelists[0];
   const [salePricelist, setSalePricelist] = useState(defPL?.id || null);
@@ -652,7 +866,10 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
   const conv = (amt) => convertPrice(amt, saleCurrency, currencies);
   const fmtCur = (n) => fmtc(conv(n), cur.symbol);
   const resolvePrice = (product) => {
-    if (salePricelist && salePricelist !== defPL?.id && product.prices?.[salePricelist] !== undefined && product.prices[salePricelist] !== null) return product.prices[salePricelist];
+    if (!salePricelist || salePricelist === defPL?.id) return product.price;
+    const pl = pricelists.find((p) => p.id === salePricelist);
+    if (pl?.pricingType === "formula" && pl.formula) return applyFormula(product.cost, product.price, pl.formula);
+    if (product.prices?.[salePricelist] !== undefined && product.prices[salePricelist] !== null) return product.prices[salePricelist];
     return product.price;
   };
 
@@ -680,8 +897,7 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
   const removeFromCart = (id) => setCart((c) => c.filter((i) => i.id !== id));
 
   const subtotal = cart.reduce((a, i) => a + i.price * i.qty, 0);
-  const discountAmt = Math.min(subtotal, +(discount) || 0);
-  const total = subtotal - discountAmt;
+  const total = subtotal;
   const customer = customers.find((c) => c.id === customerId);
 
   const completeSale = () => {
@@ -706,16 +922,16 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
       setCustomers((cs) => cs.map((c) => c.id === customerId ? { ...c, balance: (c.balance || 0) + credit } : c));
       setTxns((ts) => [...ts, { id: uid(), date: now, customerId, customerName: customer.name, type: "debit", amount: credit, note: `Sale #${saleId.slice(-6).toUpperCase()}`, refId: saleId }]);
     }
-    const newSale = { id: saleId, date: now, customerId: customerId || null, customerName: customer?.name || "Walk-in", items: cart.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, total: i.price * i.qty })), subtotal, discount: discountAmt, total, paid, credit, change, payMode, currency: saleCurrency, currencyRate: cur.rate, currencySymbol: cur.symbol, pricelistId: salePricelist };
+    const newSale = { id: saleId, date: now, customerId: customerId || null, customerName: customer?.name || "Walk-in", items: cart.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, total: i.price * i.qty })), subtotal, total, paid, credit, change, payMode, currency: saleCurrency, currencyRate: cur.rate, currencySymbol: cur.symbol, pricelistId: salePricelist };
     setSales((s) => [...s, newSale]);
     setReceipt(newSale);
-    setCart([]); setDiscount(""); setCashPaid(""); setPartialCash(""); setCustomerId(""); setPayMode("cash"); setSaleCurrency(baseCur(currencies)?.code || "USD"); setSalePricelist(defPL?.id || null);
+    setCart([]); setCashPaid(""); setPartialCash(""); setCustomerId(""); setPayMode("cash"); setSaleCurrency(baseCur(currencies)?.code || "USD"); setSalePricelist(defPL?.id || null);
   };
 
   return (
     <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
       {/* Products Panel */}
-      <div style={{ flex: 1, padding: 18, overflow: "auto", borderRight: "1px solid #1a2540", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ flex: 1, padding: "18px 18px 18px 60px", overflow: "auto", borderRight: "1px solid #e2e8f0", display: "flex", flexDirection: "column", gap: 14 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <div style={{ position: "relative", flex: 1 }}>
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#475569", fontSize: 16 }}>🔍</span>
@@ -730,18 +946,17 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {cats.map((c) => (
-            <button key={c} onClick={() => setCatFilter(c)} style={{ padding: "10px 20px", borderRadius: 24, border: "2px solid", borderColor: catFilter === c ? "#0ea5e9" : "#2d3f55", background: catFilter === c ? "#0c4a6e" : "transparent", color: catFilter === c ? "#7dd3fc" : "#94a3b8", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 42 }}>
+            <button key={c} onClick={() => setCatFilter(c)} style={{ padding: "10px 20px", borderRadius: 24, border: "2px solid", borderColor: catFilter === c ? "#0284c7" : "#475569", background: catFilter === c ? "#e0f2fe" : "transparent", color: catFilter === c ? "#0369a1" : "#64748b", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 42 }}>
               {catIcon(c)} {c}
             </button>
           ))}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(160px,1fr))", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 10 }}>
           {filtered.map((p) => (
             <div key={p.id} className={`prod-card ${p.stock === 0 ? "oos" : ""}`} onClick={() => { if (p.stock > 0) setNumpadTarget({ product: p, mode: "add" }); }}>
-              <div style={{ fontSize: 34, textAlign: "center", marginBottom: 10 }}>{catIcon(p.cat)}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", lineHeight: 1.3, marginBottom: 6 }}>{p.name}</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "#38bdf8" }}>{fmtCur(resolvePrice(p))}</div>
-              <div style={{ fontSize: 12, color: p.stock <= 5 ? "#fbbf24" : "#475569", marginTop: 3 }}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", lineHeight: 1.3, textAlign: "center", marginBottom: 4 }}>{p.name}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#0284c7" }}>{fmtCur(resolvePrice(p))}</div>
+              <div style={{ fontSize: 11, color: p.stock <= 5 ? "#d97706" : "#475569", marginTop: 2 }}>
                 {p.stock === 0 ? "Out of stock" : `${p.stock} ${p.unit}`}
               </div>
             </div>
@@ -751,8 +966,8 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
       </div>
 
       {/* Cart Panel */}
-      <div style={{ width: 340, display: "flex", flexDirection: "column", padding: 16, gap: 12, background: "#09172a", overflow: "hidden" }}>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#f1f5f9", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ width: 340, display: "flex", flexDirection: "column", padding: "18px 16px 16px 60px", gap: 12, background: "#f8fafc", overflow: "hidden" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>🛒 Cart {cart.length > 0 && `(${cart.length})`}</span>
           {cart.length > 0 && <button className="btn btn-ghost btn-sm" onClick={() => setCart([])}>Clear</button>}
         </div>
@@ -760,33 +975,25 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
         {/* Items */}
         <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
           {cart.length === 0 ? (
-            <div style={{ textAlign: "center", color: "#334155", paddingTop: 40, fontSize: 13 }}>Tap products to add</div>
+            <div style={{ textAlign: "center", color: "#94a3b8", paddingTop: 40, fontSize: 13 }}>Tap products to add</div>
           ) : cart.map((item) => (
-            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", borderBottom: "1px solid #111e33" }}>
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 0", borderBottom: "1px solid #e2e8f0" }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: "#e2e8f0", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
-                <div style={{ fontSize: 12, color: "#38bdf8" }}>{fmtCur(item.price)}</div>
+                <div style={{ fontSize: 13, color: "#1e293b", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+                <div style={{ fontSize: 12, color: "#0284c7" }}>{fmtCur(item.price)}</div>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 16, fontWeight: 700, minWidth: 28, textAlign: "center", cursor: "pointer", color: "#38bdf8" }} onClick={() => setNumpadTarget({ product: item, mode: "edit", qty: item.qty })}>{item.qty}</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, minWidth: 28, textAlign: "center", cursor: "pointer", color: "#0284c7" }} onClick={() => setNumpadTarget({ product: item, mode: "edit", qty: item.qty })}>{item.qty}</span>
               </div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: "#34d399", minWidth: 52, textAlign: "right" }}>{fmtCur(item.price * item.qty)}</div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#059669", minWidth: 52, textAlign: "right" }}>{fmtCur(item.price * item.qty)}</div>
               <button onClick={() => removeFromCart(item.id)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 16, padding: 4, lineHeight: 1 }}>✕</button>
             </div>
           ))}
         </div>
 
-        {/* Discount */}
-        <div>
-          <div className="fl">Discount ($)</div>
-          <input className="inp" type="number" placeholder="0.00" value={discount} onChange={(e) => setDiscount(e.target.value)} min={0} max={subtotal} />
-        </div>
-
         {/* Totals */}
-        <div style={{ background: "#050f1f", borderRadius: 10, padding: 14 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, color: "#475569", marginBottom: 6 }}><span>Subtotal ({cur.code})</span><span>{fmtCur(subtotal)}</span></div>
-          {discountAmt > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13.5, color: "#fbbf24", marginBottom: 6 }}><span>Discount</span><span>-{fmtCur(discountAmt)}</span></div>}
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 18, fontWeight: 700, color: "#38bdf8", borderTop: "1px solid #1a2540", paddingTop: 10, marginTop: 6 }}><span>TOTAL ({cur.code})</span><span>{fmtCur(total)}</span></div>
+        <div style={{ background: "#f8fafc", borderRadius: 10, padding: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 18, fontWeight: 700, color: "#0284c7", paddingTop: 10, marginTop: 6 }}><span>TOTAL ({cur.code})</span><span>{fmtCur(total)}</span></div>
         </div>
 
         {/* Customer */}
@@ -811,21 +1018,38 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
         {payMode === "cash" && (
           <div>
             <div className="fl">Cash Received ({cur.code})</div>
-            <input className="inp" type="number" placeholder={`Min ${fmtCur(total)}`} value={cashPaid} onChange={(e) => setCashPaid(e.target.value)} />
-            {cashPaid && +cashPaid >= total && <div style={{ fontSize: 12, color: "#34d399", marginTop: 4 }}>Change: {fmtCur(+cashPaid - total)}</div>}
+            <button onClick={() => setCashNumpadOpen(true)} style={{
+              width: "100%", padding: "10px 14px", borderRadius: 9, border: "1px solid #e2e8f0",
+              background: cashPaid && +cashPaid >= total ? "#d1fae5" : "#f8fafc",
+              color: cashPaid && +cashPaid >= total ? "#065f46" : "#1e293b",
+              fontSize: 16, fontWeight: 700, cursor: "pointer", textAlign: "left",
+              fontFamily: "'DM Mono',monospace", letterSpacing: 1
+            }}>
+              {cashPaid ? fmtCur(+cashPaid) : `Tap to enter (${fmtCur(total)})`}
+            </button>
+            {cashPaid && +cashPaid >= total && <div style={{ fontSize: 12, color: "#059669", marginTop: 4 }}>Change: {fmtCur(+cashPaid - total)}</div>}
+            {cashPaid && +cashPaid < total && <div style={{ fontSize: 12, color: "#d97706", marginTop: 4 }}>Insufficient: need {fmtCur(total - +cashPaid)} more</div>}
           </div>
         )}
         {payMode === "account" && customer && (
-          <div style={{ background: "#1a2540", borderRadius: 9, padding: 10, fontSize: 12, color: "#94a3b8" }}>
-            Full {fmtCur(total)} added to <strong style={{ color: "#f87171" }}>{customer.name}'s</strong> account.
-            New balance: <strong style={{ color: "#f87171" }}>{fmt(((customer.balance || 0) + total))}{cur.symbol}</strong>
+          <div style={{ background: "#f8fafc", borderRadius: 9, padding: 10, fontSize: 12, color: "#64748b" }}>
+            Full {fmtCur(total)} added to <strong style={{ color: "#dc2626" }}>{customer.name}'s</strong> account.
+            New balance: <strong style={{ color: "#dc2626" }}>{fmt(((customer.balance || 0) + total))}{cur.symbol}</strong>
           </div>
         )}
         {payMode === "partial" && (
           <div>
             <div className="fl">Cash Amount ({cur.code})</div>
-            <input className="inp" type="number" placeholder="Cash paid..." value={partialCash} onChange={(e) => setPartialCash(e.target.value)} min={0} />
-            {partialCash && <div style={{ fontSize: 12, color: "#fbbf24", marginTop: 4 }}>On account: {fmtCur(Math.max(0, total - Math.min(+partialCash, total)))}</div>}
+            <button onClick={() => setSplitNumpadOpen(true)} style={{
+              width: "100%", padding: "10px 14px", borderRadius: 9, border: "1px solid #e2e8f0",
+              background: partialCash && +partialCash > 0 ? "#d1fae5" : "#f8fafc",
+              color: partialCash && +partialCash > 0 ? "#065f46" : "#1e293b",
+              fontSize: 16, fontWeight: 700, cursor: "pointer", textAlign: "left",
+              fontFamily: "'DM Mono',monospace", letterSpacing: 1
+            }}>
+              {partialCash ? fmtCur(+partialCash) : `Tap to enter`}
+            </button>
+            {partialCash && <div style={{ fontSize: 12, color: "#d97706", marginTop: 4 }}>On account: {fmtCur(Math.max(0, total - Math.min(+partialCash, total)))}</div>}
           </div>
         )}
 
@@ -858,7 +1082,6 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
                   );
                 })}
               </div>
-              {receipt.discount > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><span>Discount</span><span>-{fmt(receipt.discount * (receipt.currencyRate || 1))}{receipt.currencySymbol || "$"}</span></div>}
               <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 15, marginTop: 6 }}><span>TOTAL ({receipt.currency || "USD"})</span><span>{fmt(receipt.total * (receipt.currencyRate || 1))}{receipt.currencySymbol || "$"}</span></div>
               {receipt.paid > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 4 }}><span>Cash Paid</span><span>{fmt(receipt.paid * (receipt.currencyRate || 1))}{receipt.currencySymbol || "$"}</span></div>}
               {receipt.change > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><span>Change</span><span>{fmt(receipt.change * (receipt.currencyRate || 1))}{receipt.currencySymbol || "$"}</span></div>}
@@ -891,6 +1114,32 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
             setNumpadTarget(null);
           }}
           onCancel={() => setNumpadTarget(null)}
+        />
+      )}
+
+      {/* Cash Numpad Modal */}
+      {cashNumpadOpen && (
+        <CashNumpad
+          total={total}
+          cur={cur}
+          onConfirm={(cash) => {
+            setCashPaid(cash);
+            setCashNumpadOpen(false);
+          }}
+          onCancel={() => setCashNumpadOpen(false)}
+        />
+      )}
+
+      {/* Split Cash Numpad Modal */}
+      {splitNumpadOpen && (
+        <CashNumpad
+          total={total}
+          cur={cur}
+          onConfirm={(cash) => {
+            setPartialCash(cash);
+            setSplitNumpadOpen(false);
+          }}
+          onCancel={() => setSplitNumpadOpen(false)}
         />
       )}
     </div>
@@ -969,7 +1218,7 @@ function InventoryView({ products, setProducts, currencies, pricelists }) {
   return (
     <div className="ppage">
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>Inventory</div><div style={{ fontSize: 13, color: "#64748b" }}>{products.length} products · {fmt(products.reduce((a, p) => a + p.cost * p.stock, 0))}{base.symbol} stock value</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>Inventory</div><div style={{ fontSize: 13, color: "#64748b" }}>{products.length} products · {fmt(products.reduce((a, p) => a + p.cost * p.stock, 0))}{base.symbol} stock value</div></div>
         <div style={{ display: "flex", gap: 8 }}>
           <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importProds} />
           <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
@@ -993,7 +1242,7 @@ function InventoryView({ products, setProducts, currencies, pricelists }) {
                     <td><div style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</div></td>
                     <td style={{ color: "#64748b", fontFamily: "monospace", fontSize: 12 }}>{p.sku}</td>
                     <td><span className="tag tag-blue">{p.cat}</span></td>
-                    <td style={{ color: "#38bdf8", fontWeight: 700 }}>{fmt(p.price)} {base.symbol}</td>
+                    <td style={{ color: "#0284c7", fontWeight: 700 }}>{fmt(p.price)} {base.symbol}</td>
                     <td style={{ color: "#64748b" }}>{fmt(p.cost)} {base.symbol}</td>
                     <td><span className={`tag ${+margin >= 30 ? "tag-green" : +margin >= 10 ? "tag-amber" : "tag-red"}`}>{margin}%</span></td>
                     <td><span className={`tag ${p.stock === 0 ? "tag-red" : p.stock <= 5 ? "tag-amber" : "tag-green"}`}>{p.stock}</span></td>
@@ -1018,7 +1267,7 @@ function InventoryView({ products, setProducts, currencies, pricelists }) {
       {modal && (
         <div className="modal-bg" onClick={() => setModal(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#f1f5f9" }}>{modal === "add" ? "➕ Add Product" : "✏️ Edit Product"}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#0f172a" }}>{modal === "add" ? "➕ Add Product" : "✏️ Edit Product"}</div>
             <div className="fg"><label className="fl">Product Name *</label><input className="inp" placeholder="Product name" {...F("name")} /></div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               <div className="fg"><label className="fl">SKU / Code</label><input className="inp" placeholder="e.g. CC001" {...F("sku")} /></div>
@@ -1028,8 +1277,8 @@ function InventoryView({ products, setProducts, currencies, pricelists }) {
               <div className="fg"><label className="fl">Stock Qty *</label><input className="inp" type="number" placeholder="0" {...F("stock")} /></div>
               <div className="fg"><label className="fl">Unit</label><input className="inp" placeholder="pcs, kg, L, box..." {...F("unit")} /></div>
             </div>
-            {form.price && form.cost && <div style={{ background: "#0f172a", borderRadius: 8, padding: 10, fontSize: 12, color: "#94a3b8", marginBottom: 12 }}>
-              Margin: <strong style={{ color: "#34d399" }}>{(((+form.price - +form.cost) / +form.price) * 100).toFixed(1)}%</strong> · Profit per unit: <strong style={{ color: "#34d399" }}>{fmt(+form.price - +form.cost)} {base.symbol}</strong>
+            {form.price && form.cost && <div style={{ background: "#f8fafc", borderRadius: 8, padding: 10, fontSize: 12, color: "#64748b", marginBottom: 12 }}>
+              Margin: <strong style={{ color: "#059669" }}>{(((+form.price - +form.cost) / +form.price) * 100).toFixed(1)}%</strong> · Profit per unit: <strong style={{ color: "#059669" }}>{fmt(+form.price - +form.cost)} {base.symbol}</strong>
             </div>}
             {otherPLs.length > 0 && (
               <div style={{ marginBottom: 12 }}>
@@ -1061,12 +1310,12 @@ function InventoryView({ products, setProducts, currencies, pricelists }) {
         return (
           <div className="modal-bg" onClick={() => setAdjustId(null)}>
             <div className="modal" style={{ maxWidth: 320 }} onClick={(e) => e.stopPropagation()}>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6, color: "#f1f5f9" }}>Stock Adjustment</div>
-              <div style={{ fontSize: 13, color: "#94a3b8", marginBottom: 16 }}>{p.name} · Current: <strong style={{ color: "#38bdf8" }}>{p.stock} {p.unit}</strong></div>
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 6, color: "#0f172a" }}>Stock Adjustment</div>
+              <div style={{ fontSize: 13, color: "#64748b", marginBottom: 16 }}>{p.name} · Current: <strong style={{ color: "#0284c7" }}>{p.stock} {p.unit}</strong></div>
               <div className="fg"><label className="fl">Adjustment (+/-)</label>
                 <input className="inp" type="number" placeholder="e.g. +10 or -3" value={adjQty} onChange={(e) => setAdjQty(e.target.value)} autoFocus />
               </div>
-              {adjQty && <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 12 }}>New stock: <strong style={{ color: "#38bdf8" }}>{Math.max(0, p.stock + (+adjQty || 0))} {p.unit}</strong></div>}
+              {adjQty && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 12 }}>New stock: <strong style={{ color: "#0284c7" }}>{Math.max(0, p.stock + (+adjQty || 0))} {p.unit}</strong></div>}
               <div style={{ display: "flex", gap: 10 }}>
                 <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={applyAdj}>Apply</button>
                 <button className="btn btn-ghost" onClick={() => setAdjustId(null)}>Cancel</button>
@@ -1144,7 +1393,7 @@ function PurchaseView({ products, setProducts, purchases, setPurchases, currenci
   return (
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>Purchase Stock</div><div style={{ fontSize: 13, color: "#64748b" }}>Record incoming inventory from suppliers</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>Purchase Stock</div><div style={{ fontSize: 13, color: "#64748b" }}>Record incoming inventory from suppliers</div></div>
         <div style={{ display: "flex", gap: 8 }}>
           <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importPurchases} />
           <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
@@ -1157,12 +1406,12 @@ function PurchaseView({ products, setProducts, purchases, setPurchases, currenci
       {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"}>{importMsg.text}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
         <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "#f1f5f9" }}>📥 New Purchase</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "#0f172a" }}>📥 New Purchase</div>
           {msg && <div className={msg.type === "error" ? "alert-r" : "alert-g"} style={{ marginBottom: 12 }}>{msg.text}</div>}
           <div className="fg"><label className="fl">Supplier *</label><input className="inp" placeholder="Supplier / vendor name" value={supplier} onChange={(e) => setSupplier(e.target.value)} /></div>
           <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8, fontWeight: 700, textTransform: "uppercase" }}>Items</div>
           {items.map((item, idx) => (
-            <div key={idx} style={{ background: "#0f172a", borderRadius: 9, padding: 10, marginBottom: 8 }}>
+            <div key={idx} style={{ background: "#f8fafc", borderRadius: 9, padding: 10, marginBottom: 8 }}>
               <div style={{ display: "flex", gap: 7, marginBottom: 8 }}>
                 <select className="sel" style={{ flex: 1 }} value={item.productId} onChange={(e) => onProductChange(idx, e.target.value)}>
                   <option value="">Select product...</option>
@@ -1174,26 +1423,26 @@ function PurchaseView({ products, setProducts, purchases, setPurchases, currenci
                 <div><div style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>QTY</div><input className="inp" type="number" value={item.qty} min={1} onChange={(e) => updateItem(idx, "qty", e.target.value)} /></div>
                 <div><div style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>COST/UNIT ({base.symbol})</div><input className="inp" type="number" step="0.01" value={item.cost} min={0} onChange={(e) => updateItem(idx, "cost", e.target.value)} /></div>
               </div>
-              {item.productId && <div style={{ fontSize: 11, color: "#34d399", marginTop: 5 }}>Subtotal: {fmt((+item.qty || 0) * (+item.cost || 0))} {base.symbol}</div>}
+              {item.productId && <div style={{ fontSize: 11, color: "#059669", marginTop: 5 }}>Subtotal: {fmt((+item.qty || 0) * (+item.cost || 0))} {base.symbol}</div>}
             </div>
           ))}
           <button className="btn btn-ghost btn-sm" style={{ width: "100%", justifyContent: "center", marginBottom: 12 }} onClick={addItem}>+ Add Another Item</button>
           <div className="fg"><label className="fl">Note (optional)</label><input className="inp" placeholder="Reference, invoice number..." value={note} onChange={(e) => setNote(e.target.value)} /></div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: "1px solid #2d3f55", marginBottom: 12 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: "1px solid #475569", marginBottom: 12 }}>
             <span style={{ fontWeight: 700, fontSize: 14 }}>Total Cost</span>
-            <span style={{ fontWeight: 700, fontSize: 20, color: "#38bdf8" }}>{fmt(total)} {base.symbol}</span>
+            <span style={{ fontWeight: 700, fontSize: 20, color: "#0284c7" }}>{fmt(total)} {base.symbol}</span>
           </div>
           <button className="btn btn-success" style={{ width: "100%", justifyContent: "center", padding: 12 }} onClick={completePurchase}>📥 Record Purchase</button>
         </div>
 
         <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#f1f5f9" }}>Purchase History</div>
+          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#0f172a" }}>Purchase History</div>
           {recent.length === 0 ? <div style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "24px 0" }}>No purchases yet</div>
             : recent.map((pu) => (
-              <div key={pu.id} style={{ background: "#0f172a", borderRadius: 9, padding: 12, marginBottom: 8 }}>
+              <div key={pu.id} style={{ background: "#f8fafc", borderRadius: 9, padding: 12, marginBottom: 8 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, fontSize: 13, color: "#e2e8f0" }}>{pu.supplier}</span>
-                  <span style={{ fontWeight: 700, color: "#38bdf8" }}>{fmt(pu.total)} {base.symbol}</span>
+                  <span style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{pu.supplier}</span>
+                  <span style={{ fontWeight: 700, color: "#0284c7" }}>{fmt(pu.total)} {base.symbol}</span>
                 </div>
                 <div style={{ fontSize: 11, color: "#475569", marginBottom: 4 }}>{fmtDate(pu.date)} · {pu.items.length} item(s)</div>
                 <div style={{ fontSize: 11, color: "#64748b" }}>{pu.items.map((i) => `${i.name} ×${i.qty}`).join(", ")}</div>
@@ -1300,13 +1549,13 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
           <div style={{ display: "flex", gap: 12, alignItems: "center" }}>
             <button className="btn btn-ghost btn-sm" onClick={() => setDetail(null)}>← Back</button>
             <div>
-              <div style={{ fontSize: 20, fontWeight: 700, color: "#f1f5f9" }}>{c.name}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, color: "#0f172a" }}>{c.name}</div>
               <div style={{ fontSize: 12, color: "#64748b" }}>{c.phone && c.phone} {c.email && `· ${c.email}`}</div>
             </div>
           </div>
-          <div style={{ background: c.balance > 0 ? "#450a0a" : "#052e16", borderRadius: 12, padding: "12px 20px", textAlign: "right" }}>
-            <div style={{ fontSize: 11, color: "#94a3b8", textTransform: "uppercase", letterSpacing: ".05em" }}>Balance</div>
-            <div style={{ fontSize: 26, fontWeight: 700, color: c.balance > 0 ? "#f87171" : "#34d399" }}>
+          <div style={{ background: c.balance > 0 ? "#fef2f2" : "#f0fdf4", borderRadius: 12, padding: "12px 20px", textAlign: "right" }}>
+            <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase", letterSpacing: ".05em" }}>Balance</div>
+            <div style={{ fontSize: 26, fontWeight: 700, color: c.balance > 0 ? "#dc2626" : "#059669" }}>
               {c.balance > 0 ? `Owes ${fmt(c.balance)} ${base.symbol}` : "Clear ✅"}
             </div>
             <div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>Total purchased: {fmt(totalPurchased)} {base.symbol}</div>
@@ -1316,17 +1565,17 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
         <div style={{ display: "grid", gridTemplateColumns: c.balance > 0 ? "1fr 1fr" : "1fr", gap: 14 }}>
           {c.balance > 0 && (
             <div className="card">
-              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#f1f5f9" }}>💳 Record Payment</div>
+              <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#0f172a" }}>💳 Record Payment</div>
               <div className="fg"><label className="fl">Amount</label><input className="inp" type="number" placeholder="0.00" value={payAmt} onChange={(e) => setPayAmt(e.target.value)} /></div>
               <div className="fg"><label className="fl">Note</label><input className="inp" placeholder="e.g. Cash payment" value={payNote} onChange={(e) => setPayNote(e.target.value)} /></div>
-              {payAmt && <div style={{ fontSize: 12, color: "#94a3b8", marginBottom: 10 }}>
-                Remaining balance: <strong style={{ color: +payAmt >= c.balance ? "#34d399" : "#f87171" }}>{fmt(Math.max(0, c.balance - +payAmt))} {base.symbol}</strong>
+              {payAmt && <div style={{ fontSize: 12, color: "#64748b", marginBottom: 10 }}>
+                Remaining balance: <strong style={{ color: +payAmt >= c.balance ? "#059669" : "#dc2626" }}>{fmt(Math.max(0, c.balance - +payAmt))} {base.symbol}</strong>
               </div>}
               <button className="btn btn-success" style={{ width: "100%", justifyContent: "center" }} onClick={() => makePayment(c)}>✅ Record Payment</button>
             </div>
           )}
           <div className="card">
-            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#f1f5f9" }}>➕ Manual Debit</div>
+            <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#0f172a" }}>➕ Manual Debit</div>
             <div className="fg"><label className="fl">Amount</label><input className="inp" type="number" placeholder="0.00" value={debitAmt} onChange={(e) => setDebitAmt(e.target.value)} /></div>
             <div className="fg"><label className="fl">Reason</label><input className="inp" placeholder="e.g. Credit advance" value={debitNote} onChange={(e) => setDebitNote(e.target.value)} /></div>
             <button className="btn btn-amber" style={{ width: "100%", justifyContent: "center" }} onClick={() => makeDebit(c)}>Add Debit</button>
@@ -1348,7 +1597,7 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
                       <td>{fmtDate(t.date)}<br /><span style={{ fontSize: 10, color: "#475569" }}>{fmtTime(t.date)}</span></td>
                       <td>{t.note}</td>
                       <td><span className={`tag ${t.type === "debit" ? "tag-red" : "tag-green"}`}>{t.type === "debit" ? "DEBIT" : "CREDIT"}</span></td>
-                      <td style={{ fontWeight: 700, color: t.type === "debit" ? "#f87171" : "#34d399" }}>{t.type === "debit" ? "+" : "-"}{fmt(t.amount)} {base.symbol}</td>
+                      <td style={{ fontWeight: 700, color: t.type === "debit" ? "#dc2626" : "#059669" }}>{t.type === "debit" ? "+" : "-"}{fmt(t.amount)} {base.symbol}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1362,10 +1611,10 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
                   {custSales.map((s) => (
                     <tr key={s.id}>
                       <td>{fmtDate(s.date)}</td>
-                      <td style={{ fontSize: 12, color: "#94a3b8", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.items.map((i) => `${i.name}×${i.qty}`).join(", ")}</td>
-                      <td style={{ color: "#38bdf8", fontWeight: 700 }}>{fmt(s.total)} {base.symbol}</td>
-                      <td style={{ color: "#34d399" }}>{fmt(s.paid)} {base.symbol}</td>
-                      <td style={{ color: s.credit > 0 ? "#f87171" : "#64748b" }}>{s.credit > 0 ? `${fmt(s.credit)} ${base.symbol}` : "—"}</td>
+                      <td style={{ fontSize: 12, color: "#64748b", maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.items.map((i) => `${i.name}×${i.qty}`).join(", ")}</td>
+                      <td style={{ color: "#0284c7", fontWeight: 700 }}>{fmt(s.total)} {base.symbol}</td>
+                      <td style={{ color: "#059669" }}>{fmt(s.paid)} {base.symbol}</td>
+                      <td style={{ color: s.credit > 0 ? "#dc2626" : "#64748b" }}>{s.credit > 0 ? `${fmt(s.credit)} ${base.symbol}` : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1380,7 +1629,7 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div>
-          <div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>Customers</div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>Customers</div>
           <div style={{ fontSize: 13, color: "#64748b" }}>{customers.length} customers · {fmt(customers.reduce((a, c) => a + c.balance, 0))}{base.symbol} total outstanding</div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
@@ -1421,7 +1670,7 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
       {modal && (
         <div className="modal-bg" onClick={() => setModal(null)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#f1f5f9" }}>{modal === "add" ? "➕ Add Customer" : "✏️ Edit Customer"}</div>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#0f172a" }}>{modal === "add" ? "➕ Add Customer" : "✏️ Edit Customer"}</div>
             <div className="fg"><label className="fl">Full Name *</label><input className="inp" placeholder="Customer name" {...F("name")} /></div>
             <div className="fg"><label className="fl">Phone</label><input className="inp" placeholder="Phone number" {...F("phone")} /></div>
             <div className="fg"><label className="fl">Email</label><input className="inp" placeholder="Email address" {...F("email")} /></div>
@@ -1471,7 +1720,7 @@ function HistoryView({ sales, setSales, products, currencies }) {
           return p ? { id: p.id, name: p.name, price: p.price, qty, total: p.price * qty } : null;
         }).filter(Boolean);
         if (items.length === 0) return;
-        setSales((ps) => [...ps, { id: uid(), date: Date.now(), customerId: null, customerName: r.Customer || r.customer || "Walk-in", items, subtotal: items.reduce((a, i) => a + i.total, 0), discount: +(r.Discount || r.discount || 0), total: +(r.Total || r.total || 0), paid: +(r.Paid || r.paid || 0), credit: +(r["On Account"] || r.credit || 0), change: +(r.Change || r.change || 0), payMode: r.Method || r.method || r.payMode || "cash", currency: base.code, currencyRate: 1, currencySymbol: base.symbol }]);
+        setSales((ps) => [...ps, { id: uid(), date: Date.now(), customerId: null, customerName: r.Customer || r.customer || "Walk-in", items, subtotal: items.reduce((a, i) => a + i.total, 0), total: +(r.Total || r.total || 0), paid: +(r.Paid || r.paid || 0), credit: +(r["On Account"] || r.credit || 0), change: +(r.Change || r.change || 0), payMode: r.Method || r.method || r.payMode || "cash", currency: base.code, currencyRate: 1, currencySymbol: base.symbol }]);
         added++;
       });
       setImportMsg({ type: "success", text: `✅ Imported ${added} sales` });
@@ -1485,23 +1734,23 @@ function HistoryView({ sales, setSales, products, currencies }) {
   return (
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>History & Reports</div><div style={{ fontSize: 13, color: "#64748b" }}>{sales.length} total transactions</div></div>
+        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>History & Reports</div><div style={{ fontSize: 13, color: "#64748b" }}>{sales.length} total transactions</div></div>
         <div style={{ display: "flex", gap: 8 }}>
           <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importSales} />
           <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
           <button className="btn btn-ghost btn-sm" onClick={() => {
-            const data = sorted.map((s) => ({ Date: fmtDate(s.date), Time: fmtTime(s.date), Customer: s.customerName, Items: s.items.map((i) => `${i.name}×${i.qty}`).join(", "), Subtotal: s.subtotal, Discount: s.discount, Total: s.total, Paid: s.paid, "On Account": s.credit, Change: s.change, Method: s.payMode }));
-            exportXLSX(data, ["Date", "Time", "Customer", "Items", "Subtotal", "Discount", "Total", "Paid", "On Account", "Change", "Method"], "sales.xlsx");
+            const data = sorted.map((s) => ({ Date: fmtDate(s.date), Time: fmtTime(s.date), Customer: s.customerName, Items: s.items.map((i) => `${i.name}×${i.qty}`).join(", "), Subtotal: s.subtotal, Total: s.total, Paid: s.paid, "On Account": s.credit, Change: s.change, Method: s.payMode }));
+            exportXLSX(data, ["Date", "Time", "Customer", "Items", "Subtotal", "Total", "Paid", "On Account", "Change", "Method"], "sales.xlsx");
           }}>📤 Export</button>
         </div>
       </div>
       {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"}>{importMsg.text}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         {[
-          { label: "Total Revenue", val: `${fmt(totalRev)} ${base.symbol}`, c: "#38bdf8" },
-          { label: "Cash Collected", val: `${fmt(totalCash)} ${base.symbol}`, c: "#34d399" },
-          { label: "On Account", val: `${fmt(totalCredit)} ${base.symbol}`, c: "#f87171" },
-          { label: "Est. Profit", val: `${fmt(totalProfit)} ${base.symbol}`, c: "#c084fc" },
+          { label: "Total Revenue", val: `${fmt(totalRev)} ${base.symbol}`, c: "#0284c7" },
+          { label: "Cash Collected", val: `${fmt(totalCash)} ${base.symbol}`, c: "#059669" },
+          { label: "On Account", val: `${fmt(totalCredit)} ${base.symbol}`, c: "#dc2626" },
+          { label: "Est. Profit", val: `${fmt(totalProfit)} ${base.symbol}`, c: "#7c3aed" },
         ].map((s) => (
           <div key={s.label} className="stat">
             <div style={{ fontSize: 11, color: "#64748b", marginBottom: 4, textTransform: "uppercase", letterSpacing: ".04em" }}>{s.label}</div>
@@ -1510,10 +1759,10 @@ function HistoryView({ sales, setSales, products, currencies }) {
         ))}
       </div>
       <div className="card" style={{ padding: 0 }}>
-        <div style={{ padding: "14px 20px 0", borderBottom: "1px solid #1a2540" }}>
+        <div style={{ padding: "14px 20px 0", borderBottom: "1px solid #e2e8f0" }}>
           <div style={{ display: "flex", gap: 20 }}>
             {["sales"].map((t) => (
-              <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", color: tab === t ? "#38bdf8" : "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", paddingBottom: 12, borderBottom: tab === t ? "2px solid #38bdf8" : "2px solid transparent", textTransform: "capitalize" }}>Sales ({sales.length})</button>
+              <button key={t} onClick={() => setTab(t)} style={{ background: "none", border: "none", color: tab === t ? "#0284c7" : "#64748b", fontWeight: 600, fontSize: 13, cursor: "pointer", paddingBottom: 12, borderBottom: tab === t ? "2px solid #0284c7" : "2px solid transparent", textTransform: "capitalize" }}>Sales ({sales.length})</button>
             ))}
           </div>
         </div>
@@ -1526,10 +1775,10 @@ function HistoryView({ sales, setSales, products, currencies }) {
               <tr key={s.id}>
                 <td><div style={{ fontSize: 12.5 }}>{fmtDate(s.date)}</div><div style={{ fontSize: 11, color: "#475569" }}>{fmtTime(s.date)}</div></td>
                 <td style={{ fontWeight: 500 }}>{s.customerName}</td>
-                <td style={{ fontSize: 11.5, color: "#94a3b8", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.items.map((i) => `${i.name}×${i.qty}`).join(", ")}</td>
-                <td style={{ color: "#38bdf8", fontWeight: 700 }}>{fmt(s.total)} {base.symbol}</td>
-                <td style={{ color: "#34d399" }}>{fmt(s.paid)} {base.symbol}</td>
-                <td style={{ color: s.credit > 0 ? "#f87171" : "#64748b" }}>{s.credit > 0 ? `${fmt(s.credit)} ${base.symbol}` : "—"}</td>
+                <td style={{ fontSize: 11.5, color: "#64748b", maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.items.map((i) => `${i.name}×${i.qty}`).join(", ")}</td>
+                <td style={{ color: "#0284c7", fontWeight: 700 }}>{fmt(s.total)} {base.symbol}</td>
+                <td style={{ color: "#059669" }}>{fmt(s.paid)} {base.symbol}</td>
+                <td style={{ color: s.credit > 0 ? "#dc2626" : "#64748b" }}>{s.credit > 0 ? `${fmt(s.credit)} ${base.symbol}` : "—"}</td>
                 <td style={{ color: "#64748b" }}>{s.change > 0 ? `${fmt(s.change)} ${base.symbol}` : "—"}</td>
                 <td><span className={`tag ${s.payMode === "cash" ? "tag-blue" : s.payMode === "account" ? "tag-red" : "tag-amber"}`}>{s.payMode === "cash" ? "💵 Cash" : s.payMode === "account" ? "📋 Account" : "✂️ Split"}</span></td>
                 <td style={{ fontFamily: "monospace", fontSize: 12, color: "#64748b" }}>{s.currency || "USD"}</td>
