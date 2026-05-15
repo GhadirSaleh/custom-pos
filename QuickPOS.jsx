@@ -6,7 +6,7 @@ const fmt = (n) => { const v = (+(n || 0)).toFixed(2); return v.endsWith(".00") 
 const fmtc = (n, sym) => fmt(n) + " " + (sym || "$");
 const fmtDate = (d) => new Date(d || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 const fmtTime = (d) => new Date(d || Date.now()).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-const KEYS = { p: "pos:p2", c: "pos:c2", s: "pos:s2", pu: "pos:pu2", t: "pos:t2", cr: "pos:cr2" };
+const KEYS = { p: "pos:p2", c: "pos:c2", s: "pos:s2", pu: "pos:pu2", t: "pos:t2", cr: "pos:cr2", pl: "pos:pl2" };
 
 const SEED_PRODUCTS = [
   { id: uid(), name: "Coca Cola 500ml", sku: "CC001", cat: "Beverages", price: 2.5, cost: 1.2, stock: 100, unit: "pcs" },
@@ -27,6 +27,9 @@ const SEED_CURRENCIES = [
   { code: "USD", symbol: "$", name: "US Dollar", rate: 1, isBase: true },
   { code: "EUR", symbol: "€", name: "Euro", rate: 0.92 },
   { code: "GBP", symbol: "£", name: "British Pound", rate: 0.79 },
+];
+const SEED_PRICELISTS = [
+  { id: uid(), name: "Standard", isDefault: true },
 ];
 
 const CAT_ICONS = { Beverages: "🥤", Bakery: "🍞", Grains: "🌾", Dairy: "🥛", Meat: "🥩", Fruits: "🍎", Vegetables: "🥦", Snacks: "🍿", Other: "📦" };
@@ -193,6 +196,7 @@ export default function App() {
   const [purchases, setPurchases] = useState(null);
   const [txns, setTxns] = useState(null);
   const [currencies, setCurrencies] = useState(null);
+  const [pricelists, setPricelists] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -205,6 +209,7 @@ export default function App() {
       setPurchases(await get(KEYS.pu, []));
       setTxns(await get(KEYS.t, []));
       setCurrencies(await get(KEYS.cr, SEED_CURRENCIES));
+      setPricelists(await get(KEYS.pl, SEED_PRICELISTS));
     };
     load();
   }, []);
@@ -215,13 +220,14 @@ export default function App() {
   useEffect(() => { if (purchases) window.storage.set(KEYS.pu, JSON.stringify(purchases)).catch(() => {}); }, [purchases]);
   useEffect(() => { if (txns) window.storage.set(KEYS.t, JSON.stringify(txns)).catch(() => {}); }, [txns]);
   useEffect(() => { if (currencies) window.storage.set(KEYS.cr, JSON.stringify(currencies)).catch(() => {}); }, [currencies]);
+  useEffect(() => { if (pricelists) window.storage.set(KEYS.pl, JSON.stringify(pricelists)).catch(() => {}); }, [pricelists]);
 
-  if (!products || !customers || !sales || !purchases || !txns || !currencies)
+  if (!products || !customers || !sales || !purchases || !txns || !currencies || !pricelists)
     return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#0a1628", color: "#94a3b8", fontFamily: "sans-serif", fontSize: 16, gap: 12 }}>
       <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Loading QuickPOS...
     </div>;
 
-  const ctx = { products, setProducts, customers, setCustomers, sales, setSales, purchases, setPurchases, txns, setTxns, currencies, setCurrencies, setView };
+  const ctx = { products, setProducts, customers, setCustomers, sales, setSales, purchases, setPurchases, txns, setTxns, currencies, setCurrencies, pricelists, setPricelists, setView };
   const NAV = [
     { id: "dashboard", icon: "📊", label: "Dashboard" },
     { id: "sell", icon: "🛒", label: "Sell" },
@@ -230,6 +236,7 @@ export default function App() {
     { id: "customers", icon: "👥", label: "Customers" },
     { id: "history", icon: "📋", label: "History" },
     { id: "currencies", icon: "💱", label: "Currencies" },
+    { id: "pricelists", icon: "🏷️", label: "Pricelists" },
   ];
 
   return (
@@ -257,6 +264,7 @@ export default function App() {
         {view === "customers" && <CustomersView {...ctx} />}
         {view === "history" && <HistoryView {...ctx} />}
         {view === "currencies" && <CurrenciesView {...ctx} />}
+        {view === "pricelists" && <PricelistsView {...ctx} />}
       </main>
     </div>
   );
@@ -293,13 +301,54 @@ function CurrenciesView({ currencies, setCurrencies }) {
   };
   const F = (k) => ({ value: form[k] ?? "", onChange: (e) => setForm((f) => ({ ...f, [k]: e.target.value })) });
   const base = baseCur(currencies);
+  const [importMsg, setImportMsg] = useState(null);
+  const importRef = useRef(null);
+
+  const exportCurrencies = () => {
+    const data = currencies.map((c) => ({ Code: c.code, Symbol: c.symbol, Name: c.name, Rate: c.rate, Base: c.isBase ? "Yes" : "No" }));
+    exportXLSX(data, ["Code", "Symbol", "Name", "Rate", "Base"], "currencies.xlsx");
+  };
+  const importCurrencies = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = await importXLSX(file);
+      let added = 0;
+      setCurrencies((cs) => {
+        const next = [...cs];
+        rows.forEach((r) => {
+          const code = (r.Code || r.code || "").toUpperCase();
+          if (!code) return;
+          const idx = next.findIndex((c) => c.code === code);
+          if (idx >= 0) {
+            next[idx] = { ...next[idx], symbol: r.Symbol || r.symbol || next[idx].symbol, name: r.Name || r.name || next[idx].name, rate: +(r.Rate || r.rate || next[idx].rate) };
+          } else {
+            next.push({ code, symbol: r.Symbol || r.symbol || code, name: r.Name || r.name || code, rate: +(r.Rate || r.rate || 1), isBase: false });
+            added++;
+          }
+        });
+        return next;
+      });
+      setImportMsg({ type: "success", text: `✅ Imported ${added} currencies` });
+    } catch {
+      setImportMsg({ type: "error", text: "❌ Failed to import file" });
+    }
+    e.target.value = "";
+    setTimeout(() => setImportMsg(null), 5000);
+  };
 
   return (
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>💱 Currencies</div><div style={{ fontSize: 13, color: "#64748b" }}>Base currency: <strong style={{ color: "#38bdf8" }}>{base.code} ({base.symbol})</strong></div></div>
-        <button className="btn btn-primary" onClick={openAdd}>+ Add Currency</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importCurrencies} />
+          <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
+          <button className="btn btn-ghost btn-sm" onClick={exportCurrencies}>📤 Export</button>
+          <button className="btn btn-primary" onClick={openAdd}>+ Add Currency</button>
+        </div>
       </div>
+      {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"}>{importMsg.text}</div>}
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
         <table>
           <thead><tr><th>Code</th><th>Symbol</th><th>Name</th><th>Rate (per {base.code})</th><th>Base</th><th>Actions</th></tr></thead>
@@ -336,6 +385,155 @@ function CurrenciesView({ currencies, setCurrencies }) {
             <div style={{ fontSize: 12, color: "#64748b", marginBottom: 14, background: "#0f172a", borderRadius: 8, padding: 10 }}>
               Rate = how much 1 {base.code} is worth in this currency. For {base.code} the rate is 1.
             </div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={save}>Save</button>
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── PRICELISTS VIEW ────────────────────────────────────────────────────── */
+function PricelistsView({ pricelists, setPricelists, products, setProducts, currencies }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+
+  const defPL = pricelists.find((p) => p.isDefault) || pricelists[0];
+  const otherPLs = pricelists.filter((p) => !p.isDefault);
+  const base = baseCur(currencies);
+  const F = (k) => ({ value: form[k] ?? "", onChange: (e) => setForm((f) => ({ ...f, [k]: e.target.value })) });
+  const [importMsg, setImportMsg] = useState(null);
+  const importRef = useRef(null);
+
+  const exportPricelists = () => {
+    const rows = [];
+    pricelists.forEach((pl) => {
+      products.forEach((p) => {
+        rows.push({ Pricelist: pl.name, Default: pl.isDefault ? "Yes" : "No", "Product SKU": p.sku, "Base Price": p.price, "Override Price": p.prices?.[pl.id] ?? "" });
+      });
+    });
+    exportXLSX(rows, ["Pricelist", "Default", "Product SKU", "Base Price", "Override Price"], "pricelists.xlsx");
+  };
+
+  const importPricelists = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = await importXLSX(file);
+      const names = new Set();
+      rows.forEach((r) => { const n = (r.Pricelist || r.pricelist || "").trim(); if (n) names.add(n); });
+      let added = 0;
+      setPricelists((ps) => {
+        const next = [...ps];
+        names.forEach((name) => {
+          if (!next.find((p) => p.name === name)) { next.push({ id: uid(), name, isDefault: false }); added++; }
+        });
+        return next;
+      });
+      setImportMsg({ type: "success", text: `✅ Imported ${added} pricelists` });
+    } catch {
+      setImportMsg({ type: "error", text: "❌ Failed to import file" });
+    }
+    e.target.value = "";
+    setTimeout(() => setImportMsg(null), 5000);
+  };
+
+  const openAdd = () => { setForm({ name: "" }); setModal("add"); };
+  const openEdit = (pl) => { setForm({ name: pl.name }); setModal(pl.id); };
+  const save = () => {
+    if (!form.name.trim()) return;
+    if (modal === "add") {
+      setPricelists((ps) => [...ps, { id: uid(), name: form.name.trim(), isDefault: false }]);
+      setProducts((ps) => ps.map((p) => ({ ...p, prices: { ...(p.prices || {}) } })));
+    } else {
+      setPricelists((ps) => ps.map((p) => p.id === modal ? { ...p, name: form.name.trim() } : p));
+    }
+    setModal(null);
+  };
+  const del = (id) => {
+    if (!confirm("Delete this pricelist?")) return;
+    setPricelists((ps) => ps.filter((p) => p.id !== id));
+    setProducts((ps) => ps.map((p) => { if (!p.prices) return p; const { [id]: _, ...rest } = p.prices; return { ...p, prices: rest }; }));
+  };
+
+  return (
+    <div className="ppage">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>🏷️ Pricelists</div><div style={{ fontSize: 13, color: "#64748b" }}>{pricelists.length} pricelists · {otherPLs.length > 0 ? `${products.length} products with override prices` : "Add pricelists to create pricing tiers"}</div></div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importPricelists} />
+          <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
+          <button className="btn btn-ghost btn-sm" onClick={exportPricelists}>📤 Export</button>
+          <button className="btn btn-primary" onClick={openAdd}>+ Add Pricelist</button>
+        </div>
+      </div>
+      {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"}>{importMsg.text}</div>}
+
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <table>
+          <thead><tr><th>Name</th><th>Default</th><th>Actions</th></tr></thead>
+          <tbody>
+            {pricelists.map((pl) => (
+              <tr key={pl.id}>
+                <td style={{ fontWeight: 600 }}>{pl.name}</td>
+                <td>{pl.isDefault ? <span className="tag tag-green">BASE</span> : <button className="btn btn-ghost btn-sm" onClick={() => setPricelists((ps) => ps.map((p) => ({ ...p, isDefault: p.id === pl.id })))}>Set as default</button>}</td>
+                <td>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(pl)}>Rename</button>
+                    {!pl.isDefault && <button className="btn btn-danger btn-sm" onClick={() => del(pl.id)}>Del</button>}
+                  </div>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {otherPLs.length > 0 && (
+        <div className="card" style={{ padding: 0, overflow: "auto" }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#f1f5f9", padding: "16px 20px", borderBottom: "1px solid #1a2540" }}>Override Prices</div>
+          <table>
+            <thead><tr><th>Product</th><th>{defPL.name} Price</th>{otherPLs.map((pl) => <th key={pl.id}>{pl.name} Price</th>)}</tr></thead>
+            <tbody>
+              {products.map((p) => {
+                const key = `${p.id}-prices`;
+                return (
+                  <tr key={p.id}>
+                    <td style={{ fontWeight: 600, fontSize: 13 }}>{p.name}</td>
+                    <td style={{ color: "#38bdf8", fontWeight: 700 }}>{fmt(p.price)} {base.symbol}</td>
+                    {otherPLs.map((pl) => (
+                      <td key={pl.id}>
+                        <input
+                          type="number" step="0.01" min={0}
+                          placeholder={fmt(p.price)}
+                          value={p.prices?.[pl.id] ?? ""}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setProducts((ps) => ps.map((x) => x.id === p.id ? { ...x, prices: { ...(x.prices || {}), [pl.id]: v === "" ? undefined : +v } } : x));
+                          }}
+                          style={{
+                            width: 90, padding: "6px 8px", borderRadius: 6, border: "1.5px solid #2d3f55",
+                            background: "#0f172a", color: "#e2e8f0", fontSize: 13, outline: "none"
+                          }}
+                        />
+                      </td>
+                    ))}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {modal && (
+        <div className="modal-bg" onClick={() => setModal(null)}>
+          <div className="modal" style={{ maxWidth: 360 }} onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#f1f5f9" }}>{modal === "add" ? "➕ Add Pricelist" : "✏️ Rename Pricelist"}</div>
+            <div className="fg"><label className="fl">Pricelist Name *</label><input className="inp" placeholder="e.g. Wholesale" {...F("name")} autoFocus /></div>
             <div style={{ display: "flex", gap: 10 }}>
               <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={save}>Save</button>
               <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
@@ -434,7 +632,7 @@ function Dashboard({ products, customers, sales, setView, currencies }) {
 }
 
 /* ─── SELL VIEW ─────────────────────────────────────────────────────────── */
-function SellView({ products, setProducts, customers, setCustomers, sales, setSales, txns, setTxns, currencies }) {
+function SellView({ products, setProducts, customers, setCustomers, sales, setSales, txns, setTxns, currencies, pricelists }) {
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("All");
@@ -447,10 +645,16 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
   const [err, setErr] = useState("");
   const [numpadTarget, setNumpadTarget] = useState(null);
   const [saleCurrency, setSaleCurrency] = useState(baseCur(currencies)?.code || "USD");
+  const defPL = pricelists.find((p) => p.isDefault) || pricelists[0];
+  const [salePricelist, setSalePricelist] = useState(defPL?.id || null);
   const cur = currencies.find((c) => c.code === saleCurrency) || currencies[0];
   const base = baseCur(currencies);
   const conv = (amt) => convertPrice(amt, saleCurrency, currencies);
   const fmtCur = (n) => fmtc(conv(n), cur.symbol);
+  const resolvePrice = (product) => {
+    if (salePricelist && salePricelist !== defPL?.id && product.prices?.[salePricelist] !== undefined && product.prices[salePricelist] !== null) return product.prices[salePricelist];
+    return product.price;
+  };
 
   const cats = ["All", ...Array.from(new Set(products.map((p) => p.cat)))];
   const filtered = products.filter((p) =>
@@ -460,10 +664,11 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
 
   const addToCart = (p) => {
     if (p.stock === 0) return;
+    const rp = resolvePrice(p);
     setCart((c) => {
       const ex = c.find((i) => i.id === p.id);
       if (ex) { if (ex.qty >= p.stock) return c; return c.map((i) => i.id === p.id ? { ...i, qty: i.qty + 1 } : i); }
-      return [...c, { ...p, qty: 1 }];
+      return [...c, { ...p, qty: 1, price: rp }];
     });
   };
   const updateQty = (id, qty) => {
@@ -501,10 +706,10 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
       setCustomers((cs) => cs.map((c) => c.id === customerId ? { ...c, balance: (c.balance || 0) + credit } : c));
       setTxns((ts) => [...ts, { id: uid(), date: now, customerId, customerName: customer.name, type: "debit", amount: credit, note: `Sale #${saleId.slice(-6).toUpperCase()}`, refId: saleId }]);
     }
-    const newSale = { id: saleId, date: now, customerId: customerId || null, customerName: customer?.name || "Walk-in", items: cart.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, total: i.price * i.qty })), subtotal, discount: discountAmt, total, paid, credit, change, payMode, currency: saleCurrency, currencyRate: cur.rate, currencySymbol: cur.symbol };
+    const newSale = { id: saleId, date: now, customerId: customerId || null, customerName: customer?.name || "Walk-in", items: cart.map((i) => ({ id: i.id, name: i.name, price: i.price, qty: i.qty, total: i.price * i.qty })), subtotal, discount: discountAmt, total, paid, credit, change, payMode, currency: saleCurrency, currencyRate: cur.rate, currencySymbol: cur.symbol, pricelistId: salePricelist };
     setSales((s) => [...s, newSale]);
     setReceipt(newSale);
-    setCart([]); setDiscount(""); setCashPaid(""); setPartialCash(""); setCustomerId(""); setPayMode("cash"); setSaleCurrency(baseCur(currencies)?.code || "USD");
+    setCart([]); setDiscount(""); setCashPaid(""); setPartialCash(""); setCustomerId(""); setPayMode("cash"); setSaleCurrency(baseCur(currencies)?.code || "USD"); setSalePricelist(defPL?.id || null);
   };
 
   return (
@@ -519,6 +724,9 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
           <select className="sel" style={{ width: "auto", minWidth: 100 }} value={saleCurrency} onChange={(e) => setSaleCurrency(e.target.value)}>
             {currencies.map((c) => <option key={c.code} value={c.code}>{c.symbol} {c.code}</option>)}
           </select>
+          <select className="sel" style={{ width: "auto", minWidth: 100 }} value={salePricelist || ""} onChange={(e) => setSalePricelist(e.target.value || null)}>
+            {pricelists.map((pl) => <option key={pl.id} value={pl.id}>{pl.isDefault ? "⭐" : ""} {pl.name}</option>)}
+          </select>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {cats.map((c) => (
@@ -532,7 +740,7 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
             <div key={p.id} className={`prod-card ${p.stock === 0 ? "oos" : ""}`} onClick={() => { if (p.stock > 0) setNumpadTarget({ product: p, mode: "add" }); }}>
               <div style={{ fontSize: 34, textAlign: "center", marginBottom: 10 }}>{catIcon(p.cat)}</div>
               <div style={{ fontSize: 13, fontWeight: 600, color: "#e2e8f0", lineHeight: 1.3, marginBottom: 6 }}>{p.name}</div>
-              <div style={{ fontSize: 17, fontWeight: 700, color: "#38bdf8" }}>{fmtCur(p.price)}</div>
+              <div style={{ fontSize: 17, fontWeight: 700, color: "#38bdf8" }}>{fmtCur(resolvePrice(p))}</div>
               <div style={{ fontSize: 12, color: p.stock <= 5 ? "#fbbf24" : "#475569", marginTop: 3 }}>
                 {p.stock === 0 ? "Out of stock" : `${p.stock} ${p.unit}`}
               </div>
@@ -584,7 +792,7 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
         {/* Customer */}
         <div>
           <div className="fl">Customer</div>
-          <select className="sel" value={customerId} onChange={(e) => setCustomerId(e.target.value)}>
+          <select className="sel" value={customerId} onChange={(e) => { const cId = e.target.value; setCustomerId(cId); const c = customers.find((x) => x.id === cId); if (c?.pricelistId) setSalePricelist(c.pricelistId); }}>
             <option value="">Walk-in</option>
             {customers.map((c) => <option key={c.id} value={c.id}>{c.name}{c.balance > 0 ? ` (owes ${fmt(c.balance)} ${base.symbol})` : ""}</option>)}
           </select>
@@ -690,8 +898,9 @@ function SellView({ products, setProducts, customers, setCustomers, sales, setSa
 }
 
 /* ─── INVENTORY ─────────────────────────────────────────────────────────── */
-function InventoryView({ products, setProducts, currencies }) {
+function InventoryView({ products, setProducts, currencies, pricelists }) {
   const base = baseCur(currencies);
+  const otherPLs = pricelists?.filter((p) => !p.isDefault) || [];
   const [search, setSearch] = useState("");
   const [modal, setModal] = useState(null);
   const [form, setForm] = useState({});
@@ -742,7 +951,7 @@ function InventoryView({ products, setProducts, currencies }) {
   const openEdit = (p) => { setForm({ ...p }); setModal(p.id); };
   const save = () => {
     if (!form.name || !form.price || form.stock === "") return;
-    const prod = { ...form, price: +form.price, cost: +form.cost || 0, stock: +form.stock };
+    const prod = { ...form, price: +form.price, cost: +form.cost || 0, stock: +form.stock, prices: form.prices || {} };
     if (modal === "add") setProducts((ps) => [...ps, { ...prod, id: uid() }]);
     else setProducts((ps) => ps.map((p) => p.id === modal ? prod : p));
     setModal(null);
@@ -822,6 +1031,22 @@ function InventoryView({ products, setProducts, currencies }) {
             {form.price && form.cost && <div style={{ background: "#0f172a", borderRadius: 8, padding: 10, fontSize: 12, color: "#94a3b8", marginBottom: 12 }}>
               Margin: <strong style={{ color: "#34d399" }}>{(((+form.price - +form.cost) / +form.price) * 100).toFixed(1)}%</strong> · Profit per unit: <strong style={{ color: "#34d399" }}>{fmt(+form.price - +form.cost)} {base.symbol}</strong>
             </div>}
+            {otherPLs.length > 0 && (
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 12, color: "#64748b", fontWeight: 700, textTransform: "uppercase", marginBottom: 8 }}>Override Prices</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {otherPLs.map((pl) => (
+                    <div key={pl.id} className="fg" style={{ marginBottom: 0 }}>
+                      <label className="fl">{pl.name}</label>
+                      <input className="inp" type="number" step="0.01" min={0} placeholder={form.price || "0.00"}
+                        value={form.prices?.[pl.id] ?? ""}
+                        onChange={(e) => setForm((f) => ({ ...f, prices: { ...(f.prices || {}), [pl.id]: e.target.value === "" ? undefined : +e.target.value } }))}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
             <div style={{ display: "flex", gap: 10 }}>
               <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={save}>Save Product</button>
               <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
@@ -860,6 +1085,34 @@ function PurchaseView({ products, setProducts, purchases, setPurchases, currenci
   const [items, setItems] = useState([{ productId: "", qty: 1, cost: 0 }]);
   const [note, setNote] = useState("");
   const [msg, setMsg] = useState(null);
+  const [importMsg, setImportMsg] = useState(null);
+  const importRef = useRef(null);
+
+  const importPurchases = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = await importXLSX(file);
+      let added = 0;
+      rows.forEach((r) => {
+        const supplier = r.Supplier || r.supplier || "";
+        if (!supplier) return;
+        const items = (r.Items || r.items || "").split(",").filter(Boolean).map((s) => {
+          const parts = s.trim().split("×");
+          const p = products.find((x) => x.name.toLowerCase() === (parts[0] || "").trim().toLowerCase());
+          return p ? { productId: p.id, name: p.name, qty: +(parts[1] || 1), cost: p.cost } : null;
+        }).filter(Boolean);
+        if (items.length === 0) return;
+        setPurchases((ps) => [...ps, { id: uid(), date: Date.now(), supplier, note: r.Note || r.note || "", items, total: items.reduce((a, i) => a + i.qty * i.cost, 0) }]);
+        added++;
+      });
+      setImportMsg({ type: "success", text: `✅ Imported ${added} purchase records` });
+    } catch {
+      setImportMsg({ type: "error", text: "❌ Failed to import file" });
+    }
+    e.target.value = "";
+    setTimeout(() => setImportMsg(null), 5000);
+  };
 
   const addItem = () => setItems((i) => [...i, { productId: "", qty: 1, cost: 0 }]);
   const removeItem = (idx) => setItems((i) => i.filter((_, j) => j !== idx));
@@ -892,11 +1145,16 @@ function PurchaseView({ products, setProducts, purchases, setPurchases, currenci
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>Purchase Stock</div><div style={{ fontSize: 13, color: "#64748b" }}>Record incoming inventory from suppliers</div></div>
-        <button className="btn btn-ghost btn-sm" onClick={() => {
-          const data = purchases.map((pu) => ({ Date: fmtDate(pu.date), Supplier: pu.supplier, Items: pu.items.map((i) => `${i.name}×${i.qty}`).join(", "), Total: pu.total, Note: pu.note || "" }));
-          exportXLSX(data, ["Date", "Supplier", "Items", "Total", "Note"], "purchases.xlsx");
-        }}>📤 Export Purchases</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importPurchases} />
+          <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => {
+            const data = purchases.map((pu) => ({ Date: fmtDate(pu.date), Supplier: pu.supplier, Items: pu.items.map((i) => `${i.name}×${i.qty}`).join(", "), Total: pu.total, Note: pu.note || "" }));
+            exportXLSX(data, ["Date", "Supplier", "Items", "Total", "Note"], "purchases.xlsx");
+          }}>📤 Export</button>
+        </div>
       </div>
+      {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"}>{importMsg.text}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
         <div className="card">
           <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "#f1f5f9" }}>📥 New Purchase</div>
@@ -949,7 +1207,7 @@ function PurchaseView({ products, setProducts, purchases, setPurchases, currenci
 }
 
 /* ─── CUSTOMERS VIEW ────────────────────────────────────────────────────── */
-function CustomersView({ customers, setCustomers, txns, setTxns, sales, currencies }) {
+function CustomersView({ customers, setCustomers, txns, setTxns, sales, currencies, pricelists }) {
   const [modal, setModal] = useState(null);
   const [detail, setDetail] = useState(null);
   const [form, setForm] = useState({});
@@ -1002,11 +1260,11 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
     (c.phone || "").includes(search) ||
     (c.email || "").toLowerCase().includes(search)
   );
-  const openAdd = () => { setForm({ name: "", phone: "", email: "" }); setModal("add"); };
+  const openAdd = () => { setForm({ name: "", phone: "", email: "", pricelistId: "" }); setModal("add"); };
   const save = () => {
     if (!form.name) return;
-    if (modal === "add") setCustomers((cs) => [...cs, { ...form, id: uid(), balance: 0, since: Date.now() }]);
-    else setCustomers((cs) => cs.map((c) => c.id === modal ? { ...c, ...form } : c));
+    if (modal === "add") setCustomers((cs) => [...cs, { ...form, pricelistId: form.pricelistId || null, id: uid(), balance: 0, since: Date.now() }]);
+    else setCustomers((cs) => cs.map((c) => c.id === modal ? { ...c, ...form, pricelistId: form.pricelistId || null } : c));
     setModal(null);
   };
   const del = (id) => { if (confirm("Delete this customer?")) setCustomers((cs) => cs.filter((c) => c.id !== id)); };
@@ -1167,6 +1425,12 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
             <div className="fg"><label className="fl">Full Name *</label><input className="inp" placeholder="Customer name" {...F("name")} /></div>
             <div className="fg"><label className="fl">Phone</label><input className="inp" placeholder="Phone number" {...F("phone")} /></div>
             <div className="fg"><label className="fl">Email</label><input className="inp" placeholder="Email address" {...F("email")} /></div>
+            <div className="fg"><label className="fl">Pricelist</label>
+              <select className="sel" value={form.pricelistId || ""} onChange={(e) => setForm((f) => ({ ...f, pricelistId: e.target.value || null }))}>
+                <option value="">Default pricing</option>
+                {pricelists?.map((pl) => <option key={pl.id} value={pl.id}>{pl.isDefault ? "⭐ " : ""}{pl.name}</option>)}
+              </select>
+            </div>
             <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
               <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={save}>Save Customer</button>
               <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
@@ -1179,9 +1443,11 @@ function CustomersView({ customers, setCustomers, txns, setTxns, sales, currenci
 }
 
 /* ─── HISTORY VIEW ──────────────────────────────────────────────────────── */
-function HistoryView({ sales, products, currencies }) {
+function HistoryView({ sales, setSales, products, currencies }) {
   const base = baseCur(currencies);
   const [tab, setTab] = useState("sales");
+  const [importMsg, setImportMsg] = useState(null);
+  const importRef = useRef(null);
   const sorted = [...sales].sort((a, b) => b.date - a.date);
   const totalRev = sales.reduce((a, s) => a + s.total, 0);
   const totalCash = sales.reduce((a, s) => a + s.paid, 0);
@@ -1191,15 +1457,45 @@ function HistoryView({ sales, products, currencies }) {
     return b + (i.price - (p?.cost || 0)) * i.qty;
   }, 0), 0);
 
+  const importSales = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = await importXLSX(file);
+      let added = 0;
+      rows.forEach((r) => {
+        const items = (r.Items || r.items || "").split(",").filter(Boolean).map((s) => {
+          const parts = s.trim().split("×");
+          const p = products.find((x) => x.name.toLowerCase() === (parts[0] || "").trim().toLowerCase());
+          const qty = +(parts[1] || 1);
+          return p ? { id: p.id, name: p.name, price: p.price, qty, total: p.price * qty } : null;
+        }).filter(Boolean);
+        if (items.length === 0) return;
+        setSales((ps) => [...ps, { id: uid(), date: Date.now(), customerId: null, customerName: r.Customer || r.customer || "Walk-in", items, subtotal: items.reduce((a, i) => a + i.total, 0), discount: +(r.Discount || r.discount || 0), total: +(r.Total || r.total || 0), paid: +(r.Paid || r.paid || 0), credit: +(r["On Account"] || r.credit || 0), change: +(r.Change || r.change || 0), payMode: r.Method || r.method || r.payMode || "cash", currency: base.code, currencyRate: 1, currencySymbol: base.symbol }]);
+        added++;
+      });
+      setImportMsg({ type: "success", text: `✅ Imported ${added} sales` });
+    } catch {
+      setImportMsg({ type: "error", text: "❌ Failed to import file" });
+    }
+    e.target.value = "";
+    setTimeout(() => setImportMsg(null), 5000);
+  };
+
   return (
     <div className="ppage">
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div><div style={{ fontSize: 22, fontWeight: 700, color: "#f1f5f9" }}>History & Reports</div><div style={{ fontSize: 13, color: "#64748b" }}>{sales.length} total transactions</div></div>
-        <button className="btn btn-ghost btn-sm" onClick={() => {
-          const data = sorted.map((s) => ({ Date: fmtDate(s.date), Time: fmtTime(s.date), Customer: s.customerName, Items: s.items.map((i) => `${i.name}×${i.qty}`).join(", "), Subtotal: s.subtotal, Discount: s.discount, Total: s.total, Paid: s.paid, "On Account": s.credit, Change: s.change, Method: s.payMode }));
-          exportXLSX(data, ["Date", "Time", "Customer", "Items", "Subtotal", "Discount", "Total", "Paid", "On Account", "Change", "Method"], "sales.xlsx");
-        }}>📤 Export Sales</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importSales} />
+          <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
+          <button className="btn btn-ghost btn-sm" onClick={() => {
+            const data = sorted.map((s) => ({ Date: fmtDate(s.date), Time: fmtTime(s.date), Customer: s.customerName, Items: s.items.map((i) => `${i.name}×${i.qty}`).join(", "), Subtotal: s.subtotal, Discount: s.discount, Total: s.total, Paid: s.paid, "On Account": s.credit, Change: s.change, Method: s.payMode }));
+            exportXLSX(data, ["Date", "Time", "Customer", "Items", "Subtotal", "Discount", "Total", "Paid", "On Account", "Change", "Method"], "sales.xlsx");
+          }}>📤 Export</button>
+        </div>
       </div>
+      {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"}>{importMsg.text}</div>}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 13 }}>
         {[
           { label: "Total Revenue", val: `${fmt(totalRev)} ${base.symbol}`, c: "#38bdf8" },
