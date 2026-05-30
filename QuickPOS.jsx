@@ -85,7 +85,7 @@ tr:active td{background:#f8fafc}
 .receipt{background:#fff;color:#111;border-radius:8px;padding:30px 26px;width:100%;max-width:340px;font-family:'DM Mono',monospace;font-size:12.5px}
 .alert-r{padding:12px 16px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca}
 .alert-g{padding:12px 16px;border-radius:10px;font-size:13px;display:flex;align-items:center;gap:10px;background:#f0fdf4;color:#059669;border:1px solid #bbf7d0}
-.ppage{flex:1;overflow:auto;padding:26px;display:flex;flex-direction:column;gap:20px}
+.ppage{flex:1;overflow:auto;padding:26px 26px 26px 60px;display:flex;flex-direction:column;gap:20px}
 `;
 
 /* ─── XLSX UTILITIES ─────────────────────────────────────────────────────── */
