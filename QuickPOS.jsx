@@ -6,7 +6,7 @@ const fmt = (n) => { const v = (+(n || 0)).toFixed(2); return v.endsWith(".00") 
 const fmtc = (n, sym) => fmt(n) + " " + (sym || "$");
 const fmtDate = (d) => new Date(d || Date.now()).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 const fmtTime = (d) => new Date(d || Date.now()).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" });
-const KEYS = { p: "pos:p2", c: "pos:c2", s: "pos:s2", pu: "pos:pu2", t: "pos:t2", cr: "pos:cr2", pl: "pos:pl2" };
+const KEYS = { p: "pos:p2", c: "pos:c2", s: "pos:s2", pu: "pos:pu2", t: "pos:t2", cr: "pos:cr2", pl: "pos:pl2", v: "pos:v2" };
 
 const SEED_PRODUCTS = [
   { id: uid(), name: "Coca Cola 500ml", sku: "CC001", cat: "Beverages", price: 2.5, cost: 1.2, stock: 100, unit: "pcs" },
@@ -31,6 +31,12 @@ const SEED_CURRENCIES = [
 const SEED_PRICELISTS = [
   { id: uid(), name: "Standard", isDefault: true, pricingType: "manual", formula: null },
   { id: uid(), name: "Wholesale", isDefault: false, pricingType: "formula", formula: { type: "markup", value: 25, rounding: "nearest_05" } },
+];
+
+const SEED_VENDORS = [
+  { id: uid(), name: "Fresh Distributors", phone: "555-0201", email: "orders@freshdist.com", contact: "Sarah" },
+  { id: uid(), name: "Wholesale Mart", phone: "555-0202", email: "info@wholesalemart.com", contact: "Mike" },
+  { id: uid(), name: "Global Foods Co.", phone: "555-0203", email: "sales@globalfoods.com", contact: "Jane" },
 ];
 
 const CAT_ICONS = { Beverages: "🥤", Bakery: "🍞", Grains: "🌾", Dairy: "🥛", Meat: "🥩", Fruits: "🍎", Vegetables: "🥦", Snacks: "🍿", Other: "📦" };
@@ -305,6 +311,7 @@ export default function App() {
   const [txns, setTxns] = useState(null);
   const [currencies, setCurrencies] = useState(null);
   const [pricelists, setPricelists] = useState(null);
+  const [vendors, setVendors] = useState(null);
 
   useEffect(() => {
     const load = async () => {
@@ -318,6 +325,7 @@ export default function App() {
       setTxns(await get(KEYS.t, []));
       setCurrencies(await get(KEYS.cr, SEED_CURRENCIES));
       setPricelists(await get(KEYS.pl, SEED_PRICELISTS));
+      setVendors(await get(KEYS.v, SEED_VENDORS));
     };
     load();
   }, []);
@@ -329,19 +337,21 @@ export default function App() {
   useEffect(() => { if (txns) window.storage.set(KEYS.t, JSON.stringify(txns)).catch(() => {}); }, [txns]);
   useEffect(() => { if (currencies) window.storage.set(KEYS.cr, JSON.stringify(currencies)).catch(() => {}); }, [currencies]);
   useEffect(() => { if (pricelists) window.storage.set(KEYS.pl, JSON.stringify(pricelists)).catch(() => {}); }, [pricelists]);
+  useEffect(() => { if (vendors) window.storage.set(KEYS.v, JSON.stringify(vendors)).catch(() => {}); }, [vendors]);
 
-  if (!products || !customers || !sales || !purchases || !txns || !currencies || !pricelists)
+  if (!products || !customers || !sales || !purchases || !txns || !currencies || !pricelists || !vendors)
     return <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100vh", background: "#f8fafc", color: "#64748b", fontFamily: "sans-serif", fontSize: 16, gap: 12 }}>
       <span style={{ animation: "spin 1s linear infinite", display: "inline-block" }}>⟳</span> Loading QuickPOS...
     </div>;
 
-  const ctx = { products, setProducts, customers, setCustomers, sales, setSales, purchases, setPurchases, txns, setTxns, currencies, setCurrencies, pricelists, setPricelists, setView };
+  const ctx = { products, setProducts, customers, setCustomers, sales, setSales, purchases, setPurchases, txns, setTxns, currencies, setCurrencies, pricelists, setPricelists, vendors, setVendors, setView };
   const NAV = [
     { id: "dashboard", icon: "📊", label: "Dashboard" },
     { id: "sell", icon: "🛒", label: "Sell" },
     { id: "inventory", icon: "📦", label: "Inventory" },
     { id: "purchase", icon: "🛍️", label: "Purchase" },
     { id: "customers", icon: "👥", label: "Customers" },
+    { id: "vendors", icon: "🏭", label: "Vendors" },
     { id: "history", icon: "📋", label: "History" },
     { id: "currencies", icon: "💱", label: "Currencies" },
     { id: "pricelists", icon: "🏷️", label: "Pricelists" },
@@ -377,6 +387,7 @@ export default function App() {
         {view === "inventory" && <InventoryView {...ctx} />}
         {view === "purchase" && <PurchaseView {...ctx} />}
         {view === "customers" && <CustomersView {...ctx} />}
+        {view === "vendors" && <VendorsView {...ctx} />}
         {view === "history" && <HistoryView {...ctx} />}
         {view === "currencies" && <CurrenciesView {...ctx} />}
         {view === "pricelists" && <PricelistsView {...ctx} />}
@@ -749,6 +760,126 @@ function PricelistsView({ pricelists, setPricelists, products, setProducts, curr
             )}
             <div style={{ display: "flex", gap: 10 }}>
               <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={save}>Save</button>
+              <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ─── VENDORS VIEW ──────────────────────────────────────────────────────────── */
+function VendorsView({ vendors, setVendors }) {
+  const [modal, setModal] = useState(null);
+  const [form, setForm] = useState({});
+  const [search, setSearch] = useState("");
+  const [importMsg, setImportMsg] = useState(null);
+  const importRef = useRef(null);
+
+  const exportVendors = () => {
+    const data = vendors.map((v) => ({ Name: v.name, Phone: v.phone || "", Email: v.email || "", Contact: v.contact || "" }));
+    exportXLSX(data, ["Name", "Phone", "Email", "Contact"], "vendors.xlsx");
+  };
+
+  const importVendors = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const rows = await importXLSX(file);
+      let added = 0;
+      setVendors((vs) => {
+        const next = [...vs];
+        rows.forEach((r) => {
+          const name = r.Name || r.name || "";
+          if (!name) return;
+          const idx = next.findIndex((v) => v.name.toLowerCase() === name.toLowerCase());
+          if (idx >= 0) {
+            next[idx] = { ...next[idx], phone: r.Phone || r.phone || next[idx].phone, email: r.Email || r.email || next[idx].email, contact: r.Contact || r.contact || next[idx].contact };
+          } else {
+            next.push({ id: uid(), name, phone: r.Phone || r.phone || "", email: r.Email || r.email || "", contact: r.Contact || r.contact || "" });
+            added++;
+          }
+        });
+        return next;
+      });
+      setImportMsg({ type: "success", text: `✅ Imported ${added} vendors` });
+    } catch {
+      setImportMsg({ type: "error", text: "❌ Failed to import file" });
+    }
+    e.target.value = "";
+    setTimeout(() => setImportMsg(null), 5000);
+  };
+
+  const filtered = vendors.filter((v) =>
+    v.name.toLowerCase().includes(search.toLowerCase()) ||
+    (v.phone || "").includes(search) ||
+    (v.contact || "").toLowerCase().includes(search)
+  );
+  const openAdd = () => { setForm({ name: "", phone: "", email: "", contact: "" }); setModal("add"); };
+  const openEdit = (v) => { setForm({ ...v }); setModal(v.id); };
+  const save = () => {
+    if (!form.name) return;
+    if (modal === "add") setVendors((vs) => [...vs, { ...form, id: uid() }]);
+    else setVendors((vs) => vs.map((v) => v.id === modal ? { ...v, ...form } : v));
+    setModal(null);
+  };
+  const del = (id) => { if (confirm("Delete this vendor?")) setVendors((vs) => vs.filter((v) => v.id !== id)); };
+  const F = (k) => ({ value: form[k] || "", onChange: (e) => setForm((f) => ({ ...f, [k]: e.target.value })) });
+
+  return (
+    <div className="ppage">
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+        <div>
+          <div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>🏭 Vendors</div>
+          <div style={{ fontSize: 13, color: "#64748b" }}>{vendors.length} vendors</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importVendors} />
+          <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
+          <button className="btn btn-ghost btn-sm" onClick={exportVendors}>📤 Export</button>
+          <button className="btn btn-primary" onClick={openAdd}>+ Add Vendor</button>
+        </div>
+      </div>
+      {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"}>{importMsg.text}</div>}
+      <div className="card" style={{ padding: "12px 16px" }}>
+        <input className="inp" placeholder="Search by name, phone, or contact..." value={search} onChange={(e) => setSearch(e.target.value)} />
+      </div>
+      <div className="card" style={{ padding: 0 }}>
+        <table>
+          <thead><tr><th>Name</th><th>Phone</th><th>Email</th><th>Contact</th><th>Actions</th></tr></thead>
+          <tbody>
+            {filtered.map((v) => (
+              <tr key={v.id}>
+                <td style={{ fontWeight: 600 }}>{v.name}</td>
+                <td style={{ color: "#64748b" }}>{v.phone || "—"}</td>
+                <td style={{ color: "#64748b" }}>{v.email || "—"}</td>
+                <td style={{ color: "#475569" }}>{v.contact || "—"}</td>
+                <td>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button className="btn btn-ghost btn-sm" onClick={() => openEdit(v)}>Edit</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => del(v.id)}>Del</button>
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {filtered.length === 0 && <tr><td colSpan={5} style={{ textAlign: "center", color: "#475569", padding: "30px" }}>No vendors found</td></tr>}
+          </tbody>
+        </table>
+      </div>
+
+      {modal && (
+        <div className="modal-bg" onClick={() => setModal(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "#0f172a" }}>{modal === "add" ? "➕ Add Vendor" : "✏️ Edit Vendor"}</div>
+            <div className="fg"><label className="fl">Vendor Name *</label><input className="inp" placeholder="Vendor name" {...F("name")} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+              <div className="fg"><label className="fl">Phone</label><input className="inp" placeholder="Phone number" {...F("phone")} /></div>
+              <div className="fg"><label className="fl">Email</label><input className="inp" placeholder="Email address" {...F("email")} /></div>
+            </div>
+            <div className="fg"><label className="fl">Contact Person</label><input className="inp" placeholder="Contact name" {...F("contact")} /></div>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button className="btn btn-primary" style={{ flex: 1, justifyContent: "center" }} onClick={save}>Save Vendor</button>
               <button className="btn btn-ghost" onClick={() => setModal(null)}>Cancel</button>
             </div>
           </div>
@@ -1329,13 +1460,40 @@ function InventoryView({ products, setProducts, currencies, pricelists }) {
 }
 
 /* ─── PURCHASE VIEW ─────────────────────────────────────────────────────── */
-function PurchaseView({ products, setProducts, purchases, setPurchases, currencies }) {
-  const base = baseCur(currencies);  const [supplier, setSupplier] = useState("");
-  const [items, setItems] = useState([{ productId: "", qty: 1, cost: 0 }]);
-  const [note, setNote] = useState("");
-  const [msg, setMsg] = useState(null);
+function PurchaseView({ products, setProducts, purchases, setPurchases, vendors, currencies }) {
+  const [cart, setCart] = useState([]);
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("All");
+  const [vendorId, setVendorId] = useState("");
+  const [payMode, setPayMode] = useState("cash");
+  const [cashPaid, setCashPaid] = useState("");
+  const [receipt, setReceipt] = useState(null);
+  const [err, setErr] = useState("");
+  const [numpadTarget, setNumpadTarget] = useState(null);
+  const [cashNumpadOpen, setCashNumpadOpen] = useState(false);
   const [importMsg, setImportMsg] = useState(null);
   const importRef = useRef(null);
+  const base = baseCur(currencies);
+
+  const cats = ["All", ...Array.from(new Set(products.map((p) => p.cat)))];
+  const filtered = products.filter((p) =>
+    (catFilter === "All" || p.cat === catFilter) &&
+    (p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()))
+  );
+
+  const updateQty = (id, qty) => {
+    if (qty <= 0) { setCart((c) => c.filter((i) => i.id !== id)); return; }
+    setCart((c) => c.map((i) => i.id === id ? { ...i, qty } : i));
+  };
+
+  const updateCost = (id, cost) => {
+    setCart((c) => c.map((i) => i.id === id ? { ...i, costPrice: +cost || 0 } : i));
+  };
+
+  const removeFromCart = (id) => setCart((c) => c.filter((i) => i.id !== id));
+  const subtotal = cart.reduce((a, i) => a + i.costPrice * i.qty, 0);
+  const total = subtotal;
+  const vendor = vendors.find((v) => v.id === vendorId);
 
   const importPurchases = async (e) => {
     const file = e.target.files?.[0];
@@ -1352,7 +1510,7 @@ function PurchaseView({ products, setProducts, purchases, setPurchases, currenci
           return p ? { productId: p.id, name: p.name, qty: +(parts[1] || 1), cost: p.cost } : null;
         }).filter(Boolean);
         if (items.length === 0) return;
-        setPurchases((ps) => [...ps, { id: uid(), date: Date.now(), supplier, note: r.Note || r.note || "", items, total: items.reduce((a, i) => a + i.qty * i.cost, 0) }]);
+        setPurchases((ps) => [...ps, { id: uid(), date: Date.now(), vendorId: "", vendorName: supplier, note: r.Note || r.note || "", items, total: items.reduce((a, i) => a + i.qty * i.cost, 0), paid: 0, credit: total, change: 0, payMode: "credit" }]);
         added++;
       });
       setImportMsg({ type: "success", text: `✅ Imported ${added} purchase records` });
@@ -1363,94 +1521,217 @@ function PurchaseView({ products, setProducts, purchases, setPurchases, currenci
     setTimeout(() => setImportMsg(null), 5000);
   };
 
-  const addItem = () => setItems((i) => [...i, { productId: "", qty: 1, cost: 0 }]);
-  const removeItem = (idx) => setItems((i) => i.filter((_, j) => j !== idx));
-  const updateItem = (idx, key, val) => setItems((i) => i.map((item, j) => j === idx ? { ...item, [key]: val } : item));
-  const onProductChange = (idx, productId) => {
-    const p = products.find((x) => x.id === productId);
-    setItems((i) => i.map((item, j) => j === idx ? { ...item, productId, cost: p?.cost || 0 } : item));
+  const exportPurchases = () => {
+    const data = purchases.map((pu) => ({ Date: fmtDate(pu.date), Vendor: pu.vendorName || pu.supplier, Items: pu.items.map((i) => `${i.name}×${i.qty}`).join(", "), Total: pu.total, Paid: pu.paid || 0, Credit: pu.credit || 0, Method: pu.payMode || "credit" }));
+    exportXLSX(data, ["Date", "Vendor", "Items", "Total", "Paid", "Credit", "Method"], "purchases.xlsx");
   };
-  const total = items.reduce((a, i) => a + (+(i.qty) || 0) * (+(i.cost) || 0), 0);
+
   const completePurchase = () => {
-    if (!supplier.trim()) { setMsg({ type: "error", text: "Enter supplier name" }); return; }
-    const valid = items.filter((i) => i.productId && +i.qty > 0);
-    if (valid.length === 0) { setMsg({ type: "error", text: "Add at least one product" }); return; }
+    setErr("");
+    if (cart.length === 0) { setErr("Cart is empty"); return; }
+    if (!vendor) { setErr("Select a vendor"); return; }
+    let paid = 0, credit = 0, change = 0;
+    if (payMode === "cash") {
+      paid = +(cashPaid) || 0;
+      if (paid < total) { setErr(`Cash paid (${fmt(paid)} ${base.symbol}) is less than total (${fmt(total)} ${base.symbol})`); return; }
+      change = paid - total; paid = total;
+    } else {
+      credit = total;
+    }
+    const purchaseId = uid(), now = Date.now();
     setProducts((ps) => ps.map((p) => {
-      const item = valid.find((i) => i.productId === p.id);
-      return item ? { ...p, stock: p.stock + +item.qty, cost: +item.cost || p.cost } : p;
+      const item = cart.find((i) => i.id === p.id);
+      return item ? { ...p, stock: p.stock + item.qty, cost: item.costPrice || p.cost } : p;
     }));
-    setPurchases((ps) => [...ps, {
-      id: uid(), date: Date.now(), supplier: supplier.trim(), note,
-      items: valid.map((i) => { const p = products.find((x) => x.id === i.productId); return { productId: i.productId, name: p?.name, qty: +i.qty, cost: +i.cost }; }),
-      total
-    }]);
-    setSupplier(""); setItems([{ productId: "", qty: 1, cost: 0 }]); setNote("");
-    setMsg({ type: "success", text: "✅ Purchase recorded! Stock updated." });
-    setTimeout(() => setMsg(null), 4000);
+    const newPurchase = {
+      id: purchaseId, date: now, vendorId, vendorName: vendor.name,
+      items: cart.map((i) => ({ productId: i.id, name: i.name, qty: i.qty, cost: i.costPrice, total: i.costPrice * i.qty })),
+      subtotal, total, paid, credit, change, payMode
+    };
+    setPurchases((ps) => [...ps, newPurchase]);
+    setReceipt(newPurchase);
+    setCart([]); setCashPaid(""); setVendorId(""); setPayMode("cash");
   };
-  const recent = [...purchases].sort((a, b) => b.date - a.date).slice(0, 12);
 
   return (
-    <div className="ppage">
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div><div style={{ fontSize: 22, fontWeight: 700, color: "#0f172a" }}>Purchase Stock</div><div style={{ fontSize: 13, color: "#64748b" }}>Record incoming inventory from suppliers</div></div>
-        <div style={{ display: "flex", gap: 8 }}>
+    <div style={{ display: "flex", height: "100%", overflow: "hidden" }}>
+      {/* Products Panel */}
+      <div style={{ flex: 1, padding: "18px 18px 18px 60px", overflow: "auto", display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ position: "relative", flex: 1 }}>
+            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#475569", fontSize: 16 }}>🔍</span>
+            <input className="inp" style={{ paddingLeft: 34 }} placeholder="Search products..." value={search} onChange={(e) => setSearch(e.target.value)} />
+          </div>
           <input ref={importRef} type="file" accept=".xlsx,.xls" style={{ display: "none" }} onChange={importPurchases} />
           <button className="btn btn-ghost btn-sm" onClick={() => importRef.current?.click()}>📥 Import</button>
-          <button className="btn btn-ghost btn-sm" onClick={() => {
-            const data = purchases.map((pu) => ({ Date: fmtDate(pu.date), Supplier: pu.supplier, Items: pu.items.map((i) => `${i.name}×${i.qty}`).join(", "), Total: pu.total, Note: pu.note || "" }));
-            exportXLSX(data, ["Date", "Supplier", "Items", "Total", "Note"], "purchases.xlsx");
-          }}>📤 Export</button>
+          <button className="btn btn-ghost btn-sm" onClick={exportPurchases}>📤 Export</button>
         </div>
-      </div>
-      {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"}>{importMsg.text}</div>}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
-        <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 16, color: "#0f172a" }}>📥 New Purchase</div>
-          {msg && <div className={msg.type === "error" ? "alert-r" : "alert-g"} style={{ marginBottom: 12 }}>{msg.text}</div>}
-          <div className="fg"><label className="fl">Supplier *</label><input className="inp" placeholder="Supplier / vendor name" value={supplier} onChange={(e) => setSupplier(e.target.value)} /></div>
-          <div style={{ fontSize: 12, color: "#64748b", marginBottom: 8, fontWeight: 700, textTransform: "uppercase" }}>Items</div>
-          {items.map((item, idx) => (
-            <div key={idx} style={{ background: "#f8fafc", borderRadius: 9, padding: 10, marginBottom: 8 }}>
-              <div style={{ display: "flex", gap: 7, marginBottom: 8 }}>
-                <select className="sel" style={{ flex: 1 }} value={item.productId} onChange={(e) => onProductChange(idx, e.target.value)}>
-                  <option value="">Select product...</option>
-                  {products.map((p) => <option key={p.id} value={p.id}>{p.name} (stock: {p.stock})</option>)}
-                </select>
-                {items.length > 1 && <button className="btn btn-danger btn-sm" onClick={() => removeItem(idx)}>✕</button>}
+        {importMsg && <div className={importMsg.type === "error" ? "alert-r" : "alert-g"} style={{ marginBottom: 4 }}>{importMsg.text}</div>}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          {cats.map((c) => (
+            <button key={c} onClick={() => setCatFilter(c)} style={{ padding: "10px 20px", borderRadius: 24, border: "2px solid", borderColor: catFilter === c ? "#0284c7" : "#475569", background: catFilter === c ? "#e0f2fe" : "transparent", color: catFilter === c ? "#0369a1" : "#64748b", fontSize: 14, fontWeight: 600, cursor: "pointer", minHeight: 42 }}>
+              {catIcon(c)} {c}
+            </button>
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(140px,1fr))", gap: 10 }}>
+          {filtered.map((p) => (
+            <div key={p.id} className="prod-card" onClick={() => setNumpadTarget({ product: p, mode: "add" })}>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#1e293b", lineHeight: 1.3, textAlign: "center", marginBottom: 4 }}>{p.name}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: "#059669" }}>{fmt(p.cost)} {base.symbol}</div>
+              <div style={{ fontSize: 11, color: p.stock <= 5 ? "#d97706" : "#475569", marginTop: 2 }}>
+                Stock: {p.stock} {p.unit}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div><div style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>QTY</div><input className="inp" type="number" value={item.qty} min={1} onChange={(e) => updateItem(idx, "qty", e.target.value)} /></div>
-                <div><div style={{ fontSize: 11, color: "#64748b", marginBottom: 3 }}>COST/UNIT ({base.symbol})</div><input className="inp" type="number" step="0.01" value={item.cost} min={0} onChange={(e) => updateItem(idx, "cost", e.target.value)} /></div>
-              </div>
-              {item.productId && <div style={{ fontSize: 11, color: "#059669", marginTop: 5 }}>Subtotal: {fmt((+item.qty || 0) * (+item.cost || 0))} {base.symbol}</div>}
             </div>
           ))}
-          <button className="btn btn-ghost btn-sm" style={{ width: "100%", justifyContent: "center", marginBottom: 12 }} onClick={addItem}>+ Add Another Item</button>
-          <div className="fg"><label className="fl">Note (optional)</label><input className="inp" placeholder="Reference, invoice number..." value={note} onChange={(e) => setNote(e.target.value)} /></div>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderTop: "1px solid #475569", marginBottom: 12 }}>
-            <span style={{ fontWeight: 700, fontSize: 14 }}>Total Cost</span>
-            <span style={{ fontWeight: 700, fontSize: 20, color: "#0284c7" }}>{fmt(total)} {base.symbol}</span>
-          </div>
-          <button className="btn btn-success" style={{ width: "100%", justifyContent: "center", padding: 12 }} onClick={completePurchase}>📥 Record Purchase</button>
-        </div>
-
-        <div className="card">
-          <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, color: "#0f172a" }}>Purchase History</div>
-          {recent.length === 0 ? <div style={{ color: "#475569", fontSize: 13, textAlign: "center", padding: "24px 0" }}>No purchases yet</div>
-            : recent.map((pu) => (
-              <div key={pu.id} style={{ background: "#f8fafc", borderRadius: 9, padding: 12, marginBottom: 8 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, fontSize: 13, color: "#1e293b" }}>{pu.supplier}</span>
-                  <span style={{ fontWeight: 700, color: "#0284c7" }}>{fmt(pu.total)} {base.symbol}</span>
-                </div>
-                <div style={{ fontSize: 11, color: "#475569", marginBottom: 4 }}>{fmtDate(pu.date)} · {pu.items.length} item(s)</div>
-                <div style={{ fontSize: 11, color: "#64748b" }}>{pu.items.map((i) => `${i.name} ×${i.qty}`).join(", ")}</div>
-                {pu.note && <div style={{ fontSize: 11, color: "#475569", marginTop: 3, fontStyle: "italic" }}>{pu.note}</div>}
-              </div>
-            ))}
+          {filtered.length === 0 && <div style={{ gridColumn: "1/-1", textAlign: "center", color: "#475569", padding: "30px 0", fontSize: 13 }}>No products found</div>}
         </div>
       </div>
+
+      {/* Cart Panel */}
+      <div style={{ width: 340, display: "flex", flexDirection: "column", padding: "18px 16px 16px 60px", gap: 12, background: "#f8fafc", overflow: "hidden" }}>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#0f172a", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>📥 Purchase Cart {cart.length > 0 && `(${cart.length})`}</span>
+          {cart.length > 0 && <button className="btn btn-ghost btn-sm" onClick={() => setCart([])}>Clear</button>}
+        </div>
+
+        <div style={{ flex: 1, overflow: "auto", minHeight: 0 }}>
+          {cart.length === 0 ? (
+            <div style={{ textAlign: "center", color: "#94a3b8", paddingTop: 40, fontSize: 13 }}>Tap products to add</div>
+          ) : cart.map((item) => (
+            <div key={item.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "10px 0", borderBottom: "1px solid #e2e8f0" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 13, color: "#1e293b", fontWeight: 500, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.name}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
+                  <span style={{ fontSize: 10, color: "#64748b" }}>Cost:</span>
+                  <input type="number" step="0.01" min={0} value={item.costPrice}
+                    onChange={(e) => updateCost(item.id, e.target.value)}
+                    style={{ width: 60, padding: "2px 6px", borderRadius: 5, border: "1px solid #cbd5e1", background: "#fff", color: "#059669", fontSize: 12, fontWeight: 600, outline: "none", textAlign: "right" }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontSize: 16, fontWeight: 700, minWidth: 28, textAlign: "center", cursor: "pointer", color: "#0284c7" }} onClick={() => setNumpadTarget({ product: item, mode: "edit", qty: item.qty })}>{item.qty}</span>
+              </div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#059669", minWidth: 52, textAlign: "right" }}>{fmt(item.costPrice * item.qty)} {base.symbol}</div>
+              <button onClick={() => removeFromCart(item.id)} style={{ background: "none", border: "none", color: "#475569", cursor: "pointer", fontSize: 16, padding: 4, lineHeight: 1 }}>✕</button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ background: "#f8fafc", borderRadius: 10, padding: 14 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 18, fontWeight: 700, color: "#059669", paddingTop: 10, marginTop: 6 }}>
+            <span>TOTAL ({base.code})</span><span>{fmt(total)} {base.symbol}</span>
+          </div>
+        </div>
+
+        <div>
+          <div className="fl">Vendor *</div>
+          <select className="sel" value={vendorId} onChange={(e) => setVendorId(e.target.value)}>
+            <option value="">Select vendor...</option>
+            {vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <div className="fl">Payment Method</div>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button className={`ptab ${payMode === "cash" ? "on" : ""}`} onClick={() => setPayMode("cash")}>💵 Cash</button>
+            <button className={`ptab ${payMode === "credit" ? "on" : ""}`} onClick={() => setPayMode("credit")}>📋 Pay Later</button>
+          </div>
+        </div>
+
+        {payMode === "cash" && (
+          <div>
+            <div className="fl">Cash Paid ({base.code})</div>
+            <button onClick={() => setCashNumpadOpen(true)} style={{
+              width: "100%", padding: "10px 14px", borderRadius: 9, border: "1px solid #e2e8f0",
+              background: cashPaid && +cashPaid >= total ? "#d1fae5" : "#f8fafc",
+              color: cashPaid && +cashPaid >= total ? "#065f46" : "#1e293b",
+              fontSize: 16, fontWeight: 700, cursor: "pointer", textAlign: "left",
+              fontFamily: "'DM Mono',monospace", letterSpacing: 1
+            }}>
+              {cashPaid ? `${fmt(+cashPaid)} ${base.symbol}` : `Tap to enter (${fmt(total)} ${base.symbol})`}
+            </button>
+            {cashPaid && +cashPaid >= total && <div style={{ fontSize: 12, color: "#059669", marginTop: 4 }}>Change: {fmt(+cashPaid - total)} {base.symbol}</div>}
+            {cashPaid && +cashPaid < total && <div style={{ fontSize: 12, color: "#d97706", marginTop: 4 }}>Short: need {fmt(total - +cashPaid)} {base.symbol} more</div>}
+          </div>
+        )}
+        {payMode === "credit" && vendor && (
+          <div style={{ background: "#f8fafc", borderRadius: 9, padding: 10, fontSize: 12, color: "#64748b" }}>
+            Full {fmt(total)} {base.symbol} owed to <strong style={{ color: "#d97706" }}>{vendor.name}</strong>. Pay later.
+          </div>
+        )}
+
+        {err && <div className="alert-r">{err}</div>}
+        <button className="btn btn-success" style={{ width: "100%", padding: "14px", fontSize: 15, justifyContent: "center", minHeight: 50 }} onClick={completePurchase}>
+          📥 Record Purchase
+        </button>
+      </div>
+
+      {/* Receipt */}
+      {receipt && (
+        <div className="roverlay" onClick={() => setReceipt(null)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
+            <div className="receipt">
+              <div style={{ textAlign: "center", marginBottom: 14 }}>
+                <div style={{ fontSize: 20, fontWeight: 700 }}>⚡ QuickPOS</div>
+                <div style={{ color: "#555", fontSize: 11 }}>--- PURCHASE ORDER ---</div>
+                <div style={{ color: "#555", fontSize: 11 }}>{fmtDate(receipt.date)} {fmtTime(receipt.date)}</div>
+                <div style={{ color: "#555", fontSize: 11 }}>#{receipt.id.slice(-10).toUpperCase()}</div>
+              </div>
+              <div style={{ borderTop: "1px dashed #aaa", borderBottom: "1px dashed #aaa", padding: "10px 0", margin: "8px 0" }}>
+                {receipt.items.map((i) => (
+                  <div key={i.productId || i.id} style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span>{i.name}<br /><span style={{ fontSize: 11, color: "#666" }}>x{i.qty} @ {fmt(i.cost)}{base.symbol}</span></span>
+                    <span style={{ fontWeight: 700 }}>{fmt(i.total || i.cost * i.qty)}{base.symbol}</span>
+                  </div>
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 700, fontSize: 15, marginTop: 6 }}><span>TOTAL</span><span>{fmt(receipt.total)}{base.symbol}</span></div>
+              {receipt.paid > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginTop: 4 }}><span>Cash Paid</span><span>{fmt(receipt.paid)}{base.symbol}</span></div>}
+              {receipt.change > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}><span>Change</span><span>{fmt(receipt.change)}{base.symbol}</span></div>}
+              {receipt.credit > 0 && <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#d97706", marginTop: 4 }}><span>Pay Later</span><span>{fmt(receipt.credit)}{base.symbol}</span></div>}
+              <div style={{ textAlign: "center", marginTop: 14, borderTop: "1px dashed #aaa", paddingTop: 10, fontSize: 11, color: "#555" }}>
+                Vendor: {receipt.vendorName || receipt.supplier}<br />Stock updated
+              </div>
+            </div>
+            <button className="btn btn-primary" style={{ width: 340, justifyContent: "center" }} onClick={() => setReceipt(null)}>Close</button>
+          </div>
+        </div>
+      )}
+
+      {/* Numpad */}
+      {numpadTarget && (
+        <Numpad
+          target={numpadTarget}
+          onConfirm={(qty) => {
+            if (numpadTarget.mode === "add") {
+              const p = numpadTarget.product;
+              setCart((c) => {
+                const ex = c.find((i) => i.id === p.id);
+                const newQty = ex ? ex.qty + qty : qty;
+                if (ex) return c.map((i) => i.id === p.id ? { ...i, qty: newQty } : i);
+                return [...c, { ...p, qty: newQty, costPrice: p.cost }];
+              });
+            } else {
+              updateQty(numpadTarget.product.id, qty);
+            }
+            setNumpadTarget(null);
+          }}
+          onCancel={() => setNumpadTarget(null)}
+        />
+      )}
+
+      {/* Cash Numpad */}
+      {cashNumpadOpen && (
+        <CashNumpad
+          total={total}
+          cur={base}
+          onConfirm={(cash) => { setCashPaid(cash); setCashNumpadOpen(false); }}
+          onCancel={() => setCashNumpadOpen(false)}
+        />
+      )}
     </div>
   );
 }

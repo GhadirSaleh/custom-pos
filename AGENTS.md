@@ -18,10 +18,11 @@ npm run preview  # serve dist/ locally
 ## Key conventions
 - All data is seeded on first load (products, customers, currencies, pricelists). Seeding happens in `QuickPOS.jsx` constants `SEED_*`.
 - localStorage keys use pattern `pos:{key}{version}` (e.g. `pos:p2`, `pos:s2`), defined in the `KEYS` object.
-- XLSX import/export available for all entities: products, customers, sales, purchases, currencies, pricelists.
+- XLSX import/export available for all entities: products, customers, sales, purchases, currencies, pricelists, vendors.
 - Currency conversion: base currency is the one with `isBase: true`. All other rates are relative to it.
 - Pricelist formulas: `markup`, `margin`, `discount`, `fixed` rounding options: `nearest_05/10/50/1`, `psychological`.
 - Stock adjustments use relative values (`+10` or `-3`).
+- Purchase view uses the same two-panel catalog+cart layout as SellView, with vendor dropdown, cost prices, and receipt labeled "PURCHASE ORDER".
 - The sidebar collapsible toggle str position changes dynamically based on sidebar state.
 
 ## Code style
